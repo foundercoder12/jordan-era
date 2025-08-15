@@ -1,15 +1,32 @@
-// Whacky meme image URLs
-const MEME_IMAGES = [
-  'https://i.imgflip.com/30b1gx.jpg', // classic "Drake Hotline Bling"
-  'https://i.imgflip.com/26am.jpg', // "Distracted Boyfriend"
-  'https://i.imgflip.com/1ur9b0.jpg', // "Leonardo DiCaprio Cheers"
-  'https://i.imgflip.com/3si4.jpg', // "One Does Not Simply"
-  'https://i.imgflip.com/2fm6x.jpg', // "Expanding Brain"
-  'https://i.imgflip.com/4t0m5.jpg', // "Left Exit 12 Off Ramp"
-  'https://i.imgflip.com/9ehk.jpg', // "That Would Be Great"
-  'https://i.imgflip.com/39t1o.jpg', // "Ancient Aliens"
-  'https://i.imgflip.com/1bhw.jpg', // "The Most Interesting Man"
-  'https://i.imgflip.com/5c7ql.jpg' // "Oprah You Get A Car"
+// Context-aware meme categories
+const MEME_CATEGORIES = {
+  success: [
+    'https://i.imgflip.com/1ur9b0.jpg', // Leonardo DiCaprio Cheers
+    'https://i.imgflip.com/5c7ql.jpg', // Oprah You Get A Car
+    'https://i.imgflip.com/30b1gx.jpg' // Drake Hotline Bling ("good choice")
+  ],
+  struggle: [
+    'https://i.imgflip.com/3si4.jpg', // One Does Not Simply
+    'https://i.imgflip.com/9ehk.jpg', // That Would Be Great
+    'https://i.imgflip.com/26am.jpg' // Distracted Boyfriend
+  ],
+  motivation: [
+    'https://i.imgflip.com/2fm6x.jpg', // Expanding Brain
+    'https://i.imgflip.com/1bhw.jpg', // The Most Interesting Man
+    'https://i.imgflip.com/39t1o.jpg' // Ancient Aliens
+  ],
+  confused: [
+    'https://i.imgflip.com/4t0m5.jpg', // Left Exit 12 Off Ramp
+    'https://i.imgflip.com/3si4.jpg' // One Does Not Simply
+  ]
+};
+
+// Keyword mapping for meme categories
+const MEME_KEYWORDS = [
+  { category: 'success', keywords: ['win', 'success', 'achievement', 'goal', 'accomplished', 'celebrate', 'victory'] },
+  { category: 'struggle', keywords: ['stuck', 'problem', 'blocked', 'fail', 'hard', 'challenge', 'issue', 'tough'] },
+  { category: 'motivation', keywords: ['motivate', 'inspire', 'push', 'energy', 'focus', 'drive', 'ambition'] },
+  { category: 'confused', keywords: ['confused', 'lost', 'unclear', 'what', 'how', 'why', 'help'] }
 ];
 
 const { App } = require('@slack/bolt');
@@ -465,21 +482,29 @@ app.message(async ({ message, say }) => {
       { role: 'user', content: userText, timestamp: new Date() }
     ];
 
-    // 10% chance to reply with a whacky meme image instead of text
+    // 10% chance to reply with a context-aware meme image
     if (Math.random() < 0.10) {
-      const memeUrl = MEME_IMAGES[Math.floor(Math.random() * MEME_IMAGES.length)];
+      let memeCategory = 'motivation'; // default
+      const lowerText = userText.toLowerCase();
+      for (const { category, keywords } of MEME_KEYWORDS) {
+        if (keywords.some(word => lowerText.includes(word))) {
+          memeCategory = category;
+          break;
+        }
+      }
+      const memes = MEME_CATEGORIES[memeCategory];
+      const memeUrl = memes[Math.floor(Math.random() * memes.length)];
       await say({
         blocks: [
           {
             type: 'image',
             image_url: memeUrl,
-            alt_text: 'Whacky meme!'
+            alt_text: `${memeCategory} meme!`
           }
         ],
-        text: 'Whacky meme!'
+        text: `${memeCategory} meme!`
       });
-      console.log(`[BOT] Sent a whacky meme to user ${userId}: ${memeUrl}`);
-      // Optionally, you can still update memory with a meme event if you want
+      console.log(`[BOT] Sent a ${memeCategory} meme to user ${userId}: ${memeUrl}`);
       return;
     }
 
