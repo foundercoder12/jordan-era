@@ -226,15 +226,17 @@ app.message(async ({ message, say }) => {
   try {
     // Skip bot messages
     if (message.subtype === 'bot_message') return;
-    
+
     const userId = message.user;
     const userText = message.text;
-    
+
+    console.log(`[BOT] Received message from user ${userId}: ${userText}`);
+
     // Get or create user session
     if (!userSessions.has(userId)) {
       userSessions.set(userId, createUserSession(userId));
     }
-    
+
     const userSession = userSessions.get(userId);
 
     // Create enhanced conversation context with memory
@@ -264,10 +266,12 @@ app.message(async ({ message, say }) => {
     // Update user memory with this interaction (now includes both user and assistant message)
     updateUserMemory(userId, userText, aiResponse);
 
-    // Send response
+    // Send response (no thread_ts, reply in main chat)
     await say({
       text: aiResponse
     });
+
+    console.log(`[BOT] Sent reply to user ${userId}: ${aiResponse}`);
     
   } catch (error) {
     console.error('Error processing message:', error);
@@ -286,8 +290,7 @@ app.event('app_mention', async ({ event, say }) => {
     
     if (!userText) {
       await say({
-        text: "Hey there! 👋 I'm your motivational friend! Just mention me and let me know what's on your mind, or send me a direct message to chat privately.",
-        thread_ts: event.ts
+        text: "Hey there! 👋 I'm your motivational friend! Just mention me and let me know what's on your mind, or send me a direct message to chat privately."
       });
       return;
     }
@@ -296,8 +299,7 @@ app.event('app_mention', async ({ event, say }) => {
     if (userText.toLowerCase().includes('memory') || userText.toLowerCase().includes('progress') || userText.toLowerCase().includes('goals')) {
       if (!userSessions.has(userId)) {
         await say({
-          text: "You haven't set any goals yet! Let's start by setting your first goal. What would you like to accomplish?",
-          thread_ts: event.ts
+          text: "You haven't set any goals yet! Let's start by setting your first goal. What would you like to accomplish?"
         });
         return;
       }
@@ -413,6 +415,42 @@ cron.schedule('0 21 * * *', () => {
 });
 
 // Handle app home opened
+app.event('app_home_opened', async ({ event, say }) => {
+  try {
+    const userId = event.user;
+    
+    if (!userSessions.has(userId)) {
+      await say({
+        text: `Welcome! 👋 I'm ${process.env.BOT_NAME || 'MotivationalFriend'}, your daily motivation buddy! 
+
+I'm here to:
+• Help you set and achieve daily goals
+• Keep you motivated throughout the day
+• Send encouraging reminders
+• Be a supportive friend
+
+Send me a direct message to get started, or mention me in any channel! 💪`,
+        channel: userId
+      });
+    } else {
+      const userSession = userSessions.get(userId);
+      const lastGoal = userSession.goals[userSession.goals.length - 1];
+      
+      let message = `Welcome back! 🌟 How can I help you today?`;
+      
+      if (lastGoal) {
+        message += `\n\nYour last goal was: "${lastGoal}"\nHow's that going?`;
+      }
+      
+      await say({
+        text: message,
+        channel: userId
+      });
+    }
+  } catch (error) {
+    console.error('Error handling app home opened:', error);
+  }
+});
 
 
 
