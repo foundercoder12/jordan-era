@@ -421,31 +421,27 @@ app.event('app_home_opened', async ({ event, say }) => {
     
     if (!userSessions.has(userId)) {
       await say({
-        text: `Welcome! 👋 I'm ${process.env.BOT_NAME || 'MotivationalFriend'}, your daily motivation buddy! 
-
-I'm here to:
-• Help you set and achieve daily goals
-• Keep you motivated throughout the day
-• Send encouraging reminders
-• Be a supportive friend
-
-Send me a direct message to get started, or mention me in any channel! 💪`,
+        text: `Welcome! 👋 I'm ${process.env.BOT_NAME || 'MotivationalFriend'}, your daily motivation buddy!\n\nI'm here to:\n• Help you set and achieve daily goals\n• Keep you motivated throughout the day\n• Send encouraging reminders\n• Be a supportive friend\n\nSend me a direct message to get started, or mention me in any channel! 💪`,
         channel: userId
       });
     } else {
       const userSession = userSessions.get(userId);
       const lastGoal = userSession.goals[userSession.goals.length - 1];
-      
-      let message = `Welcome back! 🌟 How can I help you today?`;
-      
-      if (lastGoal) {
-        message += `\n\nYour last goal was: "${lastGoal}"\nHow's that going?`;
+      const now = new Date();
+      const lastInteraction = userSession.lastInteraction || userSession.createdAt || now;
+      const diffMs = now - new Date(lastInteraction);
+  const diffHours = diffMs / (1000 * 60 * 60);
+  if (diffHours >= 3) {
+        let message = `Welcome back! 🌟 How can I help you today?`;
+        if (lastGoal) {
+          message += `\n\nYour last goal was: "${lastGoal.text || lastGoal}"\nHow's that going?`;
+        }
+        await say({
+          text: message,
+          channel: userId
+        });
       }
-      
-      await say({
-        text: message,
-        channel: userId
-      });
+      // If less than 1 hour, do not send a welcome back message
     }
   } catch (error) {
     console.error('Error handling app home opened:', error);
