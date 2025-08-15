@@ -266,8 +266,7 @@ app.message(async ({ message, say }) => {
 
     // Send response
     await say({
-      text: aiResponse,
-      thread_ts: message.ts
+      text: aiResponse
     });
     
   } catch (error) {
@@ -414,42 +413,6 @@ cron.schedule('0 21 * * *', () => {
 });
 
 // Handle app home opened
-app.event('app_home_opened', async ({ event, say }) => {
-  try {
-    const userId = event.user;
-    
-    if (!userSessions.has(userId)) {
-      await say({
-        text: `Welcome! 👋 I'm ${process.env.BOT_NAME || 'MotivationalFriend'}, your daily motivation buddy! 
-
-I'm here to:
-• Help you set and achieve daily goals
-• Keep you motivated throughout the day
-• Send encouraging reminders
-• Be a supportive friend
-
-Send me a direct message to get started, or mention me in any channel! 💪`,
-        channel: userId
-      });
-    } else {
-      const userSession = userSessions.get(userId);
-      const lastGoal = userSession.goals[userSession.goals.length - 1];
-      
-      let message = `Welcome back! 🌟 How can I help you today?`;
-      
-      if (lastGoal) {
-        message += `\n\nYour last goal was: "${lastGoal}"\nHow's that going?`;
-      }
-      
-      await say({
-        text: message,
-        channel: userId
-      });
-    }
-  } catch (error) {
-    console.error('Error handling app home opened:', error);
-  }
-});
 
 
 
