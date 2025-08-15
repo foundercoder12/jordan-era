@@ -236,19 +236,21 @@ app.message(async ({ message, say }) => {
     }
     
     const userSession = userSessions.get(userId);
-    
+
     // Create enhanced conversation context with memory
     const memoryContext = `User Context:
-- Goals: ${userSession.goals.map(g => g.text).join(', ') || 'None set yet'}
-- Recent Obstacles: ${userSession.obstacles.filter(o => !o.resolved).map(o => o.text).join(', ') || 'None'}
-- Communication Style: ${userSession.preferences.communicationStyle}
-- Progress Streak: ${userSession.progress.currentStreak} days`;
+    - Goals: ${userSession.goals.map(g => g.text).join(', ') || 'None set yet'}
+    - Recent Obstacles: ${userSession.obstacles.filter(o => !o.resolved).map(o => o.text).join(', ') || 'None'}
+    - Communication Style: ${userSession.preferences.communicationStyle}
+    - Progress Streak: ${userSession.progress.currentStreak} days`;
 
+    // Add the current user message to the conversation context BEFORE calling OpenAI
     const conversationContext = [
       { role: 'system', content: BOT_PERSONALITY + '\n\n' + memoryContext },
-      ...userSession.conversationHistory.slice(-20) // Keep last 20 messages for context
+      ...userSession.conversationHistory.slice(-19), // last 19 messages
+      { role: 'user', content: userText, timestamp: new Date() }
     ];
-    
+
     // Generate AI response
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -256,12 +258,12 @@ app.message(async ({ message, say }) => {
       max_tokens: 300,
       temperature: 0.8,
     });
-    
+
     const aiResponse = completion.choices[0].message.content;
-    
-    // Update user memory with this interaction
+
+    // Update user memory with this interaction (now includes both user and assistant message)
     updateUserMemory(userId, userText, aiResponse);
-    
+
     // Send response
     await say({
       text: aiResponse,
