@@ -60,3 +60,7 @@ jspm_packages/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Bot memory files
+user_memory.json
+src/user_memory.json

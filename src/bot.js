@@ -3,6 +3,8 @@ const OpenAI = require('openai');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 // Initialize OpenAI
@@ -33,6 +35,19 @@ expressApp.get('/', (req, res) => {
   });
 });
 
+// Memory status endpoint
+expressApp.get('/memory', (req, res) => {
+  const memoryStats = {
+    totalUsers: userSessions.size,
+    totalConversations: Array.from(userSessions.values()).reduce((sum, session) => sum + session.conversationHistory.length, 0),
+    totalGoals: Array.from(userSessions.values()).reduce((sum, session) => sum + session.goals.length, 0),
+    totalObstacles: Array.from(userSessions.values()).reduce((sum, session) => sum + session.obstacles.length, 0),
+    timestamp: new Date().toISOString()
+  };
+  
+  res.status(200).json(memoryStats);
+});
+
 // Initialize Slack app
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -41,14 +56,132 @@ const app = new App({
   appToken: process.env.SLACK_APP_TOKEN,
 });
 
-// Store user conversations and goals
-const userSessions = new Map();
+// Enhanced user memory system
+const userSessions = loadMemory();
 
-// Bot personality and prompts
+// Memory utilities
+const MEMORY_FILE = path.join(__dirname, 'user_memory.json');
+
+// Load memory from file
+function loadMemory() {
+  try {
+    if (fs.existsSync(MEMORY_FILE)) {
+      const data = fs.readFileSync(MEMORY_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      // Convert date strings back to Date objects
+      for (const session of Object.values(parsed)) {
+        if (session.lastInteraction) session.lastInteraction = new Date(session.lastInteraction);
+        if (session.createdAt) session.createdAt = new Date(session.createdAt);
+        if (session.goals) {
+          session.goals.forEach(g => {
+            if (g.timestamp) g.timestamp = new Date(g.timestamp);
+          });
+        }
+        if (session.obstacles) {
+          session.obstacles.forEach(o => {
+            if (o.timestamp) o.timestamp = new Date(o.timestamp);
+          });
+        }
+        if (session.conversationHistory) {
+          session.conversationHistory.forEach(c => {
+            if (c.timestamp) c.timestamp = new Date(c.timestamp);
+          });
+        }
+      }
+      return new Map(Object.entries(parsed));
+    }
+  } catch (error) {
+    console.error('Error loading memory:', error);
+  }
+  return new Map();
+}
+
+// Save memory to file
+function saveMemory() {
+  try {
+    const data = Object.fromEntries(userSessions);
+    fs.writeFileSync(MEMORY_FILE, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error saving memory:', error);
+  }
+}
+
+// Auto-save memory every 5 minutes
+setInterval(saveMemory, 5 * 60 * 1000);
+
+function createUserSession(userId) {
+  return {
+    userId: userId,
+    goals: [],
+    obstacles: [],
+    preferences: {
+      communicationStyle: 'encouraging',
+      reminderFrequency: 'daily',
+      focusAreas: []
+    },
+    progress: {
+      currentStreak: 0,
+      totalGoalsCompleted: 0,
+      lastGoalDate: null
+    },
+    conversationHistory: [],
+    lastInteraction: new Date(),
+    createdAt: new Date()
+  };
+}
+
+function updateUserMemory(userId, userText, aiResponse) {
+  const session = userSessions.get(userId);
+  
+  // Add conversation to history
+  session.conversationHistory.push(
+    { role: 'user', content: userText, timestamp: new Date() },
+    { role: 'assistant', content: aiResponse, timestamp: new Date() }
+  );
+  
+  // Keep last 20 messages for context (instead of 10)
+  if (session.conversationHistory.length > 20) {
+    session.conversationHistory = session.conversationHistory.slice(-20);
+  }
+  
+  // Update last interaction
+  session.lastInteraction = new Date();
+  
+  // Extract and store goals if mentioned
+  const goalKeywords = ['goal', 'achieve', 'accomplish', 'complete', 'finish', 'work on'];
+  if (goalKeywords.some(keyword => userText.toLowerCase().includes(keyword))) {
+    session.goals.push({
+      text: userText,
+      timestamp: new Date(),
+      status: 'active'
+    });
+  }
+  
+  // Extract obstacles if mentioned
+  const obstacleKeywords = ['stuck', 'blocked', 'difficult', 'challenge', 'problem', 'obstacle'];
+  if (obstacleKeywords.some(keyword => userText.toLowerCase().includes(keyword))) {
+    session.obstacles.push({
+      text: userText,
+      timestamp: new Date(),
+      resolved: false
+    });
+  }
+}
+
+// Enhanced bot personality with memory awareness
 const BOT_PERSONALITY = `You are a motivational friend named Jordan. 
 You are supportive, encouraging, and genuinely care about helping people achieve their goals. 
 You ask thoughtful questions, provide gentle motivation, and help people overcome obstacles. 
-Keep responses friendly, conversational, and under 200 words.`;
+Keep responses friendly, conversational, and under 200 words.
+
+IMPORTANT: You have access to the user's conversation history, goals, and obstacles. Use this information to:
+1. Reference previous conversations and goals
+2. Acknowledge progress and achievements
+3. Follow up on unresolved obstacles
+4. Provide personalized motivation based on their history
+5. Build on previous discussions
+
+Always be contextually aware and reference their journey when appropriate.`;
 
 // Morning motivation prompt
 const MORNING_PROMPT = `Good morning! 🌅 It's Jordan here, ready to help you have an amazing day! 
@@ -101,25 +234,21 @@ app.message(async ({ message, say }) => {
     
     // Get or create user session
     if (!userSessions.has(userId)) {
-      userSessions.set(userId, {
-        goals: [],
-        obstacles: [],
-        lastInteraction: new Date(),
-        conversationHistory: []
-      });
+      userSessions.set(userId, createUserSession(userId));
     }
     
     const userSession = userSessions.get(userId);
-    userSession.lastInteraction = new Date();
-    userSession.conversationHistory.push({
-      role: 'user',
-      content: userText
-    });
     
-    // Create conversation context for OpenAI
+    // Create enhanced conversation context with memory
+    const memoryContext = `User Context:
+- Goals: ${userSession.goals.map(g => g.text).join(', ') || 'None set yet'}
+- Recent Obstacles: ${userSession.obstacles.filter(o => !o.resolved).map(o => o.text).join(', ') || 'None'}
+- Communication Style: ${userSession.preferences.communicationStyle}
+- Progress Streak: ${userSession.progress.currentStreak} days`;
+
     const conversationContext = [
-      { role: 'system', content: BOT_PERSONALITY },
-      ...userSession.conversationHistory.slice(-10) // Keep last 10 messages for context
+      { role: 'system', content: BOT_PERSONALITY + '\n\n' + memoryContext },
+      ...userSession.conversationHistory.slice(-20) // Keep last 20 messages for context
     ];
     
     // Generate AI response
@@ -132,11 +261,8 @@ app.message(async ({ message, say }) => {
     
     const aiResponse = completion.choices[0].message.content;
     
-    // Store AI response in conversation history
-    userSession.conversationHistory.push({
-      role: 'assistant',
-      content: aiResponse
-    });
+    // Update user memory with this interaction
+    updateUserMemory(userId, userText, aiResponse);
     
     // Send response
     await say({
@@ -167,26 +293,56 @@ app.event('app_mention', async ({ event, say }) => {
       return;
     }
     
+    // Handle memory commands
+    if (userText.toLowerCase().includes('memory') || userText.toLowerCase().includes('progress') || userText.toLowerCase().includes('goals')) {
+      if (!userSessions.has(userId)) {
+        await say({
+          text: "You haven't set any goals yet! Let's start by setting your first goal. What would you like to accomplish?",
+          thread_ts: event.ts
+        });
+        return;
+      }
+      
+      const session = userSessions.get(userId);
+      const memorySummary = `📚 **Your Memory Summary:**
+      
+🎯 **Active Goals (${session.goals.filter(g => g.status === 'active').length}):**
+${session.goals.filter(g => g.status === 'active').map(g => `• ${g.text}`).join('\n') || 'No active goals'}
+
+🚧 **Current Obstacles:**
+${session.obstacles.filter(o => !o.resolved).map(o => `• ${o.text}`).join('\n') || 'No obstacles'}
+
+📈 **Progress:**
+• Current Streak: ${session.progress.currentStreak} days
+• Total Goals Completed: ${session.progress.totalGoalsCompleted}
+• Last Goal Date: ${session.progress.lastGoalDate ? session.progress.lastGoalDate.toDateString() : 'Never'}
+
+💬 **Recent Conversations:** ${session.conversationHistory.length} messages`;
+
+      await say({
+        text: memorySummary,
+        thread_ts: event.ts
+      });
+      return;
+    }
+    
     // Process the mention similar to direct messages
     if (!userSessions.has(userId)) {
-      userSessions.set(userId, {
-        goals: [],
-        obstacles: [],
-        lastInteraction: new Date(),
-        conversationHistory: []
-      });
+      userSessions.set(userId, createUserSession(userId));
     }
     
     const userSession = userSessions.get(userId);
-    userSession.lastInteraction = new Date();
-    userSession.conversationHistory.push({
-      role: 'user',
-      content: userText
-    });
     
+    // Create enhanced conversation context with memory
+    const memoryContext = `User Context:
+- Goals: ${userSession.goals.map(g => g.text).join(', ') || 'None set yet'}
+- Recent Obstacles: ${userSession.obstacles.filter(o => !o.resolved).map(o => o.text).join(', ') || 'None'}
+- Communication Style: ${userSession.preferences.communicationStyle}
+- Progress Streak: ${userSession.progress.currentStreak} days`;
+
     const conversationContext = [
-      { role: 'system', content: BOT_PERSONALITY },
-      ...userSession.conversationHistory.slice(-10)
+      { role: 'system', content: BOT_PERSONALITY + '\n\n' + memoryContext },
+      ...userSession.conversationHistory.slice(-20) // Keep last 20 messages for context
     ];
     
     const completion = await openai.chat.completions.create({
@@ -198,10 +354,8 @@ app.event('app_mention', async ({ event, say }) => {
     
     const aiResponse = completion.choices[0].message.content;
     
-    userSession.conversationHistory.push({
-      role: 'assistant',
-      content: aiResponse
-    });
+    // Update user memory with this interaction
+    updateUserMemory(userId, userText, aiResponse);
     
     await say({
       text: aiResponse,
