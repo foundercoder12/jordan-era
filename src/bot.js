@@ -1,3 +1,17 @@
+// Whacky meme image URLs
+const MEME_IMAGES = [
+  'https://i.imgflip.com/30b1gx.jpg', // classic "Drake Hotline Bling"
+  'https://i.imgflip.com/26am.jpg', // "Distracted Boyfriend"
+  'https://i.imgflip.com/1ur9b0.jpg', // "Leonardo DiCaprio Cheers"
+  'https://i.imgflip.com/3si4.jpg', // "One Does Not Simply"
+  'https://i.imgflip.com/2fm6x.jpg', // "Expanding Brain"
+  'https://i.imgflip.com/4t0m5.jpg', // "Left Exit 12 Off Ramp"
+  'https://i.imgflip.com/9ehk.jpg', // "That Would Be Great"
+  'https://i.imgflip.com/39t1o.jpg', // "Ancient Aliens"
+  'https://i.imgflip.com/1bhw.jpg', // "The Most Interesting Man"
+  'https://i.imgflip.com/5c7ql.jpg' // "Oprah You Get A Car"
+];
+
 const { App } = require('@slack/bolt');
 const OpenAI = require('openai');
 const cron = require('node-cron');
@@ -450,6 +464,24 @@ app.message(async ({ message, say }) => {
       ...userSession.conversationHistory.slice(-19), // last 19 messages
       { role: 'user', content: userText, timestamp: new Date() }
     ];
+
+    // 10% chance to reply with a whacky meme image instead of text
+    if (Math.random() < 0.10) {
+      const memeUrl = MEME_IMAGES[Math.floor(Math.random() * MEME_IMAGES.length)];
+      await say({
+        blocks: [
+          {
+            type: 'image',
+            image_url: memeUrl,
+            alt_text: 'Whacky meme!'
+          }
+        ],
+        text: 'Whacky meme!'
+      });
+      console.log(`[BOT] Sent a whacky meme to user ${userId}: ${memeUrl}`);
+      // Optionally, you can still update memory with a meme event if you want
+      return;
+    }
 
     // Generate AI response
     const completion = await openai.chat.completions.create({
