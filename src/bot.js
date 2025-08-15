@@ -37,7 +37,7 @@ Let's start with a quick check-in:
 Share whatever feels right - I'm here to support you! 💪`;
 
 // Afternoon check-in prompt
-const AFTERNOON_PROMPT = `Hey there! ☀️ Jordan here, checking in on your day! 
+const AFTERNOON_PROMPT = `Hey there! ☀️ How's your day going so far? 
 
 Let me know:
 - Are you making progress on your goals?
@@ -47,7 +47,7 @@ Let me know:
 Remember, every step forward counts! 🚀`;
 
 // Evening reflection prompt
-const EVENING_PROMPT = `Evening check-in! 🌙 Jordan here for our daily reflection! 
+const EVENING_PROMPT = `Evening check-in! 🌙 
 
 Let's reflect on your day:
 - What did you accomplish?
@@ -57,7 +57,7 @@ Let's reflect on your day:
 You're doing great! 🌟`;
 
 // Goodnight motivation prompt
-const GOODNIGHT_PROMPT = `Time to wind down! 😴 Jordan here for our evening wrap-up! 
+const GOODNIGHT_PROMPT = `Time to wind down! 😴 
 
 Before you go:
 - What's one thing you're grateful for today?
@@ -273,11 +273,21 @@ Send me a direct message to get started, or mention me in any channel! 💪`,
   }
 });
 
-// Health check endpoint for hosting platforms
+// Health check endpoints for hosting platforms
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'healthy', 
     bot: 'Jordan Motivational Bot',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'Jordan Motivational Bot is running!',
+    status: 'active',
     timestamp: new Date().toISOString()
   });
 });
