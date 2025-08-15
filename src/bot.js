@@ -2,11 +2,35 @@ const { App } = require('@slack/bolt');
 const OpenAI = require('openai');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
+const express = require('express');
 require('dotenv').config();
 
 // Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Initialize Express server for healthchecks
+const expressApp = express();
+const PORT = process.env.PORT || 3000;
+
+// Health check endpoints for hosting platforms
+expressApp.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    bot: 'Jordan Motivational Bot',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+expressApp.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'Jordan Motivational Bot is running!',
+    status: 'active',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Initialize Slack app
@@ -273,24 +297,7 @@ Send me a direct message to get started, or mention me in any channel! 💪`,
   }
 });
 
-// Health check endpoints for hosting platforms
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy', 
-    bot: 'Jordan Motivational Bot',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  });
-});
 
-app.get('/', (req, res) => {
-  res.status(200).json({ 
-    message: 'Jordan Motivational Bot is running!',
-    status: 'active',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // Error handling
 app.error((error) => {
@@ -303,4 +310,10 @@ app.error((error) => {
   console.log('🚀 Motivational Slack Bot is running!');
   console.log('⏰ Scheduled reminders are active');
   console.log('🤖 Bot is ready to motivate and support!');
+  
+  // Start Express server for healthchecks
+  expressApp.listen(PORT, () => {
+    console.log(`🌐 Express server running on port ${PORT}`);
+    console.log(`🏥 Health check available at /health`);
+  });
 })();
