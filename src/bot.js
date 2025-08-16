@@ -575,7 +575,7 @@ app.message(async ({ message, say }) => {
           break;
         }
       }
-      const memes = MEME_CATEGORIES[memeCategory];
+  const memes = MEME_CONFIG[memeCategory];
       const memeUrl = memes[Math.floor(Math.random() * memes.length)];
       await say({
         blocks: [
