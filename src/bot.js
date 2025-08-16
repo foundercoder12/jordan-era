@@ -547,8 +547,8 @@ app.message(async ({ message, say }) => {
       await say({ text: `MJ Challenge: ${getRandomChallenge()}` });
     }
 
-    // Occasionally ask for feedback
-    if (Math.random() < 0.05) {
+    // Rarely ask for feedback (0.5% chance)
+    if (Math.random() < 0.005) {
       await sendFeedbackPrompt(say, userId);
     }
 
