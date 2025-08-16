@@ -536,8 +536,14 @@ app.message(async ({ message, say }) => {
       await say({ text: streakMsg });
     }
 
-    // Occasionally send a challenge
-    if (Math.random() < 0.08) {
+    // Occasionally send a challenge (1% chance, only if user is feeling up/high)
+    const highEnergyKeywords = [
+      'win', 'success', 'accomplished', 'excited', 'happy', 'energized', 'motivated', 'pumped', 'awesome', 'amazing', 'great', 'fantastic', 'celebrate', 'victory', 'crushed it', 'on fire', 'unstoppable', 'let’s go', 'feeling good', 'feeling strong', 'confident', 'proud', 'joy', 'love', 'grateful', 'thankful', 'blessed', 'positive', 'high', 'up', 'hype', 'inspired', 'ready', 'let’s do this'
+    ];
+    if (
+      Math.random() < 0.01 &&
+      highEnergyKeywords.some(word => userText.toLowerCase().includes(word))
+    ) {
       await say({ text: `MJ Challenge: ${getRandomChallenge()}` });
     }
 
