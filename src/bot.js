@@ -1,5 +1,18 @@
 // 100+ short, real Michael Jordan scenarios, quotes, and lessons for inspiration
 const MJ_GAME_SCENARIOS = [
+// Keywords for context-aware scenario injection
+const MJ_SCENARIO_KEYWORDS = [
+  'struggle', 'stuck', 'hard', 'challenge', 'fail', 'failure', 'mistake', 'loss', 'losing',
+  'motivate', 'motivation', 'inspire', 'energy', 'push', 'drive', 'ambition',
+  'pressure', 'stress', 'clutch', 'big moment', 'finals', 'buzzer',
+  'win', 'winning', 'victory', 'champion', 'success', 'trophy',
+  'advice', 'help', 'tip', 'suggest', 'recommend', 'guidance'
+];
+
+function shouldAddMJScenario(userText, aiResponse) {
+  const text = (userText + ' ' + aiResponse).toLowerCase();
+  return MJ_SCENARIO_KEYWORDS.some(word => text.includes(word));
+}
   "I played through the 'Flu Game' in the 1997 Finals and still dropped 38 points. Sometimes you just push through.",
   "I got cut from my high school varsity team. I used that as fuel and came back stronger.",
   "I hit the game-winning shot in Game 6 of the 1993 Finals. Pressure is just an opportunity to shine.",
@@ -115,11 +128,15 @@ const MJ_GAME_SCENARIOS = [
   "I learned to keep pushing, no matter what."
 ];
 
-function maybeAddMJScenario(aiResponse) {
-  // 15% chance to add a short MJ scenario, only if the response is not too long
-  if (Math.random() < 0.15 && aiResponse.length < 120) {
+function maybeAddMJScenario(userText, aiResponse) {
+  if (shouldAddMJScenario(userText, aiResponse)) {
     const scenario = MJ_GAME_SCENARIOS[Math.floor(Math.random() * MJ_GAME_SCENARIOS.length)];
-    return aiResponse + '\n' + scenario;
+    // If the response is long, add scenario as a new line; if short, append naturally
+    if (aiResponse.length > 180) {
+      return aiResponse + '\n' + scenario;
+    } else {
+      return aiResponse + ' ' + scenario;
+    }
   }
   return aiResponse;
 }
@@ -700,8 +717,8 @@ app.message(async ({ message, say }) => {
 
     const aiResponse = completion.choices[0].message.content;
 
-  // Optionally add a short, real MJ scenario for a more human feel
-  const finalResponse = maybeAddMJScenario(aiResponse);
+  // Optionally add a short, real MJ scenario for a more human feel, only if it fits the context
+  const finalResponse = maybeAddMJScenario(userText, aiResponse);
 
   // Update user memory with this interaction (now includes both user and assistant message)
   updateUserMemory(userId, userText, finalResponse);
