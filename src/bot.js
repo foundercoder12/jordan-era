@@ -1,18 +1,9 @@
 // 100+ short, real Michael Jordan scenarios, quotes, and lessons for inspiration
 const MJ_GAME_SCENARIOS = [
 // Keywords for context-aware scenario injection
-const MJ_SCENARIO_KEYWORDS = [
-  'struggle', 'stuck', 'hard', 'challenge', 'fail', 'failure', 'mistake', 'loss', 'losing',
-  'motivate', 'motivation', 'inspire', 'energy', 'push', 'drive', 'ambition',
-  'pressure', 'stress', 'clutch', 'big moment', 'finals', 'buzzer',
-  'win', 'winning', 'victory', 'champion', 'success', 'trophy',
-  'advice', 'help', 'tip', 'suggest', 'recommend', 'guidance'
-];
+// ...existing code...
 
-function shouldAddMJScenario(userText, aiResponse) {
-  const text = (userText + ' ' + aiResponse).toLowerCase();
-  return MJ_SCENARIO_KEYWORDS.some(word => text.includes(word));
-}
+// Place MJ scenario keywords and functions AFTER all require/import/config
   "I played through the 'Flu Game' in the 1997 Finals and still dropped 38 points. Sometimes you just push through.",
   "I got cut from my high school varsity team. I used that as fuel and came back stronger.",
   "I hit the game-winning shot in Game 6 of the 1993 Finals. Pressure is just an opportunity to shine.",
@@ -225,6 +216,20 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
+// Keywords for context-aware scenario injection (must be after require/config)
+const MJ_SCENARIO_KEYWORDS = [
+  'struggle', 'stuck', 'hard', 'challenge', 'fail', 'failure', 'mistake', 'loss', 'losing',
+  'motivate', 'motivation', 'inspire', 'energy', 'push', 'drive', 'ambition',
+  'pressure', 'stress', 'clutch', 'big moment', 'finals', 'buzzer',
+  'win', 'winning', 'victory', 'champion', 'success', 'trophy',
+  'advice', 'help', 'tip', 'suggest', 'recommend', 'guidance'
+];
+
+function shouldAddMJScenario(userText, aiResponse) {
+  const text = (userText + ' ' + aiResponse).toLowerCase();
+  return MJ_SCENARIO_KEYWORDS.some(word => text.includes(word));
+}
 
 // Initialize OpenAI
 const openai = new OpenAI({
