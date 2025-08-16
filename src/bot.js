@@ -2,23 +2,8 @@
 require('dotenv').config();
 // --- Gamification and Engagement Features ---
 
-// Track user streaks and milestones
-function updateStreak(userSession) {
-  const today = new Date().toDateString();
-  if (userSession.progress.lastGoalDate !== today) {
-    userSession.progress.currentStreak += 1;
-    userSession.progress.lastGoalDate = today;
-    if (userSession.progress.currentStreak % 7 === 0) {
-      userSession.progress.totalGoalsCompleted += 1;
-      return '🏆 1-week streak! You’re on fire!';
-    }
-    if (userSession.progress.currentStreak % 30 === 0) {
-      return '🏅 30-day streak! Legendary consistency!';
-    }
-    return '🔥 Streak updated! Keep going!';
-  }
-  return null;
-}
+
+// (Streak logic removed for a more natural experience)
 
 // Daily/weekly challenge pool
 const MJ_CHALLENGES = [
@@ -530,11 +515,8 @@ app.message(async ({ message, say }) => {
 
     const userSession = userSessions.get(userId);
 
-    // Update streak and celebrate milestones
-    const streakMsg = updateStreak(userSession);
-    if (streakMsg) {
-      await say({ text: streakMsg });
-    }
+
+  // (Streak messages removed)
 
     // Occasionally send a challenge (1% chance, only if user is feeling up/high)
     const highEnergyKeywords = [
