@@ -1,3 +1,20 @@
+// Short, real Michael Jordan game scenarios for inspiration
+const MJ_GAME_SCENARIOS = [
+  "In the 1997 Finals, I played through the 'Flu Game' and still dropped 38 points. Sometimes you just push through, no matter how you feel.",
+  "I got cut from my high school varsity team. I used that as fuel, worked harder, and came back stronger the next year.",
+  "In 1993, I hit the game-winning shot in Game 6 of the Finals. Pressure is just an opportunity to shine.",
+  "I missed over 9,000 shots in my career. Failure taught me more than success ever could.",
+  "In 1989, I made 'The Shot' over Craig Ehlo. I always wanted the ball in clutch moments—embrace the challenge."
+];
+
+function maybeAddMJScenario(aiResponse) {
+  // 15% chance to add a short MJ scenario, only if the response is not too long
+  if (Math.random() < 0.15 && aiResponse.length < 120) {
+    const scenario = MJ_GAME_SCENARIOS[Math.floor(Math.random() * MJ_GAME_SCENARIOS.length)];
+    return aiResponse + '\n' + scenario;
+  }
+  return aiResponse;
+}
 const axios = require('axios');
 
 // Mem0 config
@@ -575,17 +592,20 @@ app.message(async ({ message, say }) => {
 
     const aiResponse = completion.choices[0].message.content;
 
+  // Optionally add a short, real MJ scenario for a more human feel
+  const finalResponse = maybeAddMJScenario(aiResponse);
+
   // Update user memory with this interaction (now includes both user and assistant message)
-  updateUserMemory(userId, userText, aiResponse);
+  updateUserMemory(userId, userText, finalResponse);
   // Store memory in Mem0 as well
-  storeMemory(userId, userText, aiResponse);
+  storeMemory(userId, userText, finalResponse);
 
     // Send response (no thread_ts, reply in main chat)
     await say({
-      text: aiResponse
+      text: finalResponse
     });
 
-    console.log(`[BOT] Sent reply to user ${userId}: ${aiResponse}`);
+    console.log(`[BOT] Sent reply to user ${userId}: ${finalResponse}`);
     
   } catch (error) {
     console.error('Error processing message:', error);
