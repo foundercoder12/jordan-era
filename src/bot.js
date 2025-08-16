@@ -1,3 +1,5 @@
+
+require('dotenv').config();
 // --- Gamification and Engagement Features ---
 
 // Track user streaks and milestones
@@ -205,56 +207,45 @@ function maybeAddMJScenario(userText, aiResponse) {
   }
   return aiResponse;
 }
-const axios = require('axios');
 
-// Mem0 config
+// Mem0 SDK integration
+const { MemoryClient } = require('mem0ai');
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
-const MEM0_API_URL = process.env.MEM0_API_URL || 'https://api.mem0.com/v1';
+const mem0Client = new MemoryClient({ apiKey: MEM0_API_KEY });
 
-// Store a memory in Mem0
+// Store a memory for a user in Mem0 using the official SDK
 async function storeMemory(userId, userText, aiResponse) {
   try {
-    await axios.post(
-      `${MEM0_API_URL}/memory`,
-      {
-        user_id: userId,
-        user_text: userText,
-        ai_response: aiResponse,
-        timestamp: new Date().toISOString()
-      },
-      {
-        headers: { 'Authorization': `Bearer ${MEM0_API_KEY}` }
-      }
-    );
-  } catch (err) {
-    console.error('[Mem0] Error storing memory:', err?.response?.data || err.message);
+    const result = await mem0Client.addMemory({
+      userId,
+      userText,
+      aiResponse,
+      timestamp: new Date().toISOString()
+    });
+    return result;
+  } catch (error) {
+    console.error('Error storing memory in Mem0:', error.message);
+    return null;
   }
 }
 
-// Retrieve relevant memories from Mem0
-async function retrieveMemories(userId, userText) {
+// Retrieve memories for a user from Mem0 using the official SDK
+async function retrieveMemories(userId, limit = 5) {
   try {
-    const res = await axios.post(
-      `${MEM0_API_URL}/memory/search`,
-      {
-        user_id: userId,
-        query: userText,
-        top_k: 3
-      },
-      {
-        headers: { 'Authorization': `Bearer ${MEM0_API_KEY}` }
-      }
-    );
-    return res.data?.memories || [];
-  } catch (err) {
-    console.error('[Mem0] Error retrieving memories:', err?.response?.data || err.message);
+    const result = await mem0Client.getMemories({
+      userId,
+      limit,
+    });
+    return result.memories || [];
+  } catch (error) {
+    console.error('Error retrieving memories from Mem0:', error.message);
     return [];
   }
 }
-// Context-aware meme categories
-const MEME_CATEGORIES = {
+
+// Meme config (fixed block)
+const MEME_CONFIG = {
   success: [
-    'https://i.imgflip.com/1ur9b0.jpg', // Leonardo DiCaprio Cheers
     'https://i.imgflip.com/5c7ql.jpg', // Oprah You Get A Car
     'https://i.imgflip.com/30b1gx.jpg' // Drake Hotline Bling ("good choice")
   ],
