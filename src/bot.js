@@ -354,14 +354,14 @@ const app = new App({
   appToken: process.env.SLACK_APP_TOKEN,
 });
 
-// Enhanced user memory system
-const userSessions = loadMemory();
-
 // Memory utilities
 const MEMORY_FILE = path.join(__dirname, 'user_memory.json');
 
 // Load memory from file
 function loadMemory() {
+
+// Enhanced user memory system
+const userSessions = loadMemory();
   try {
     if (fs.existsSync(MEMORY_FILE)) {
       const data = fs.readFileSync(MEMORY_FILE, 'utf8');
