@@ -1,3 +1,49 @@
+const axios = require('axios');
+
+// Mem0 config
+const MEM0_API_KEY = process.env.MEM0_API_KEY;
+const MEM0_API_URL = process.env.MEM0_API_URL || 'https://api.mem0.com/v1';
+
+// Store a memory in Mem0
+async function storeMemory(userId, userText, aiResponse) {
+  try {
+    await axios.post(
+      `${MEM0_API_URL}/memory`,
+      {
+        user_id: userId,
+        user_text: userText,
+        ai_response: aiResponse,
+        timestamp: new Date().toISOString()
+      },
+      {
+        headers: { 'Authorization': `Bearer ${MEM0_API_KEY}` }
+      }
+    );
+  } catch (err) {
+    console.error('[Mem0] Error storing memory:', err?.response?.data || err.message);
+  }
+}
+
+// Retrieve relevant memories from Mem0
+async function retrieveMemories(userId, userText) {
+  try {
+    const res = await axios.post(
+      `${MEM0_API_URL}/memory/search`,
+      {
+        user_id: userId,
+        query: userText,
+        top_k: 3
+      },
+      {
+        headers: { 'Authorization': `Bearer ${MEM0_API_KEY}` }
+      }
+    );
+    return res.data?.memories || [];
+  } catch (err) {
+    console.error('[Mem0] Error retrieving memories:', err?.response?.data || err.message);
+    return [];
+  }
+}
 // Context-aware meme categories
 const MEME_CATEGORIES = {
   success: [
@@ -468,12 +514,23 @@ app.message(async ({ message, say }) => {
 
     const userSession = userSessions.get(userId);
 
-    // Create enhanced conversation context with memory
+
+    // Retrieve relevant memories from Mem0
+    const mem0Memories = await retrieveMemories(userId, userText);
+    let mem0Context = '';
+    if (mem0Memories.length > 0) {
+      mem0Context = '\n\nMemories from past conversations:';
+      mem0Memories.forEach((m, i) => {
+        mem0Context += `\n${i+1}. User: ${m.user_text}\n   Bot: ${m.ai_response}`;
+      });
+    }
+
+    // Create enhanced conversation context with memory and Mem0
     const memoryContext = `User Context:
     - Goals: ${userSession.goals.map(g => g.text).join(', ') || 'None set yet'}
     - Recent Obstacles: ${userSession.obstacles.filter(o => !o.resolved).map(o => o.text).join(', ') || 'None'}
     - Communication Style: ${userSession.preferences.communicationStyle}
-    - Progress Streak: ${userSession.progress.currentStreak} days`;
+    - Progress Streak: ${userSession.progress.currentStreak} days${mem0Context}`;
 
     // Add the current user message to the conversation context BEFORE calling OpenAI
     const conversationContext = [
@@ -518,8 +575,10 @@ app.message(async ({ message, say }) => {
 
     const aiResponse = completion.choices[0].message.content;
 
-    // Update user memory with this interaction (now includes both user and assistant message)
-    updateUserMemory(userId, userText, aiResponse);
+  // Update user memory with this interaction (now includes both user and assistant message)
+  updateUserMemory(userId, userText, aiResponse);
+  // Store memory in Mem0 as well
+  storeMemory(userId, userText, aiResponse);
 
     // Send response (no thread_ts, reply in main chat)
     await say({
