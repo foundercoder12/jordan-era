@@ -719,21 +719,6 @@ Sweet dreams! You've got this! 💫`;
 
 // Handle direct messages
 app.message(async ({ message, say }) => {
-    // Update streak and celebrate milestones
-    const streakMsg = updateStreak(userSession);
-    if (streakMsg) {
-      await say({ text: streakMsg });
-    }
-
-    // Occasionally send a challenge
-    if (Math.random() < 0.08) {
-      await say({ text: `MJ Challenge: ${getRandomChallenge()}` });
-    }
-
-    // Occasionally ask for feedback
-    if (Math.random() < 0.05) {
-      await sendFeedbackPrompt(say, userId);
-    }
   try {
     // Skip bot messages
     if (message.subtype === 'bot_message') return;
@@ -750,6 +735,21 @@ app.message(async ({ message, say }) => {
 
     const userSession = userSessions.get(userId);
 
+    // Update streak and celebrate milestones
+    const streakMsg = updateStreak(userSession);
+    if (streakMsg) {
+      await say({ text: streakMsg });
+    }
+
+    // Occasionally send a challenge
+    if (Math.random() < 0.08) {
+      await say({ text: `MJ Challenge: ${getRandomChallenge()}` });
+    }
+
+    // Occasionally ask for feedback
+    if (Math.random() < 0.05) {
+      await sendFeedbackPrompt(say, userId);
+    }
 
     // Retrieve relevant memories from Mem0
     const mem0Memories = await retrieveMemories(userId, userText);
@@ -811,13 +811,13 @@ app.message(async ({ message, say }) => {
 
     const aiResponse = completion.choices[0].message.content;
 
-  // Optionally add a short, real MJ scenario for a more human feel, only if it fits the context
-  const finalResponse = maybeAddMJScenario(userText, aiResponse);
+    // Optionally add a short, real MJ scenario for a more human feel, only if it fits the context
+    const finalResponse = maybeAddMJScenario(userText, aiResponse);
 
-  // Update user memory with this interaction (now includes both user and assistant message)
-  updateUserMemory(userId, userText, finalResponse);
-  // Store memory in Mem0 as well
-  storeMemory(userId, userText, finalResponse);
+    // Update user memory with this interaction (now includes both user and assistant message)
+    updateUserMemory(userId, userText, finalResponse);
+    // Store memory in Mem0 as well
+    storeMemory(userId, userText, finalResponse);
 
     // Send response (no thread_ts, reply in main chat)
     await say({
