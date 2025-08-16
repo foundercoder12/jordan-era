@@ -213,15 +213,15 @@ const { MemoryClient } = require('mem0ai');
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const mem0Client = new MemoryClient({ apiKey: MEM0_API_KEY });
 
-// Store a memory for a user in Mem0 using the official SDK
+// Store a memory for a user in Mem0 using the official SDK (correct method)
 async function storeMemory(userId, userText, aiResponse) {
   try {
-    const result = await mem0Client.addMemory({
-      userId,
-      userText,
-      aiResponse,
-      timestamp: new Date().toISOString()
-    });
+    const messages = [
+      { role: 'user', content: userText },
+      { role: 'assistant', content: aiResponse }
+    ];
+    const options = { user_id: userId, timestamp: Date.now() };
+    const result = await mem0Client.add(messages, options);
     return result;
   } catch (error) {
     console.error('Error storing memory in Mem0:', error.message);
@@ -229,14 +229,12 @@ async function storeMemory(userId, userText, aiResponse) {
   }
 }
 
-// Retrieve memories for a user from Mem0 using the official SDK
+// Retrieve memories for a user from Mem0 using the official SDK (correct method)
 async function retrieveMemories(userId, limit = 5) {
   try {
-    const result = await mem0Client.getMemories({
-      userId,
-      limit,
-    });
-    return result.memories || [];
+    const options = { user_id: userId, page_size: limit };
+    const memories = await mem0Client.getAll(options);
+    return memories || [];
   } catch (error) {
     console.error('Error retrieving memories from Mem0:', error.message);
     return [];
