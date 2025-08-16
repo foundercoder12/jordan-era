@@ -359,9 +359,6 @@ const MEMORY_FILE = path.join(__dirname, 'user_memory.json');
 
 // Load memory from file
 function loadMemory() {
-
-// Enhanced user memory system
-const userSessions = loadMemory();
   try {
     if (fs.existsSync(MEMORY_FILE)) {
       const data = fs.readFileSync(MEMORY_FILE, 'utf8');
@@ -393,6 +390,9 @@ const userSessions = loadMemory();
   }
   return new Map();
 }
+
+// Enhanced user memory system
+const userSessions = loadMemory();
 
 // Save memory to file
 function saveMemory() {
