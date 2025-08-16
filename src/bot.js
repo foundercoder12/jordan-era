@@ -220,7 +220,8 @@ async function storeMemory(userId, userText, aiResponse) {
       { role: 'user', content: userText },
       { role: 'assistant', content: aiResponse }
     ];
-    const options = { user_id: userId, timestamp: Date.now() };
+    // Mem0 expects timestamp as Unix epoch (integer, in seconds)
+    const options = { user_id: userId, timestamp: Math.floor(Date.now() / 1000) };
     const result = await mem0Client.add(messages, options);
     return result;
   } catch (error) {
