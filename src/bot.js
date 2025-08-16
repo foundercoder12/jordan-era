@@ -1,3 +1,77 @@
+// --- Gamification and Engagement Features ---
+
+// Track user streaks and milestones
+function updateStreak(userSession) {
+  const today = new Date().toDateString();
+  if (userSession.progress.lastGoalDate !== today) {
+    userSession.progress.currentStreak += 1;
+    userSession.progress.lastGoalDate = today;
+    if (userSession.progress.currentStreak % 7 === 0) {
+      userSession.progress.totalGoalsCompleted += 1;
+      return '🏆 1-week streak! You’re on fire!';
+    }
+    if (userSession.progress.currentStreak % 30 === 0) {
+      return '🏅 30-day streak! Legendary consistency!';
+    }
+    return '🔥 Streak updated! Keep going!';
+  }
+  return null;
+}
+
+// Daily/weekly challenge pool
+const MJ_CHALLENGES = [
+  "Do one thing today that scares you.",
+  "Write down your biggest goal and one step to get closer.",
+  "Give feedback to a teammate.",
+  "Take a 5-minute break to visualize your success.",
+  "Share a win in your team channel.",
+  "Reflect on a recent failure and what you learned.",
+  "Reach out to someone for advice or mentorship.",
+  "Set a new personal best in something you do today."
+];
+
+function getRandomChallenge() {
+  return MJ_CHALLENGES[Math.floor(Math.random() * MJ_CHALLENGES.length)];
+}
+
+// Feedback loop (send a message with Slack buttons)
+async function sendFeedbackPrompt(say, userId) {
+  await say({
+    channel: userId,
+    text: "How helpful was my last advice?",
+    blocks: [
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: "How helpful was my last advice?" }
+      },
+      {
+        type: "actions",
+        elements: [
+          { type: "button", text: { type: "plain_text", text: "👍 Helpful" }, value: "helpful", action_id: "feedback_helpful" },
+          { type: "button", text: { type: "plain_text", text: "👎 Not Helpful" }, value: "not_helpful", action_id: "feedback_not_helpful" }
+        ]
+      }
+    ]
+  });
+}
+
+// Social feature: share win in public channel
+async function shareWin(say, userId, winText) {
+  await say({
+    channel: process.env.PUBLIC_CHANNEL_ID || "#general",
+    text: `🎉 <@${userId}> just shared a win: ${winText}`
+  });
+}
+
+// Leaderboard (stub, to be expanded)
+async function postLeaderboard(say) {
+  // This would aggregate stats and post to a channel
+  await say({
+    channel: process.env.PUBLIC_CHANNEL_ID || "#general",
+    text: "🏅 Top performers this week: (feature coming soon!)"
+  });
+}
+
 // 100+ short, real Michael Jordan scenarios, quotes, and lessons for inspiration
 const MJ_GAME_SCENARIOS = [
 // Keywords for context-aware scenario injection
@@ -645,6 +719,21 @@ Sweet dreams! You've got this! 💫`;
 
 // Handle direct messages
 app.message(async ({ message, say }) => {
+    // Update streak and celebrate milestones
+    const streakMsg = updateStreak(userSession);
+    if (streakMsg) {
+      await say({ text: streakMsg });
+    }
+
+    // Occasionally send a challenge
+    if (Math.random() < 0.08) {
+      await say({ text: `MJ Challenge: ${getRandomChallenge()}` });
+    }
+
+    // Occasionally ask for feedback
+    if (Math.random() < 0.05) {
+      await sendFeedbackPrompt(say, userId);
+    }
   try {
     // Skip bot messages
     if (message.subtype === 'bot_message') return;
