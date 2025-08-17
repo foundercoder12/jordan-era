@@ -560,10 +560,12 @@ app.message(async ({ message, say }) => {
       }
     }
 
-    // 2. Daily: Ask if user wants to schedule a chat for tomorrow (1% chance per message)
-    if (Math.random() < 0.01 && !userSession.awaitingSchedule) {
+
+    // 2. Intent detection: Check if user is asking for a reminder or schedule
+    const reminderIntent = /(remind|reminder|calendar|invite|schedule|meeting|appointment|event|add to calendar|set.*reminder|tomorrow|at \d{1,2}:\d{2})/i.test(userText);
+    if ((reminderIntent || Math.random() < 0.01) && !userSession.awaitingSchedule) {
       userSession.awaitingSchedule = true;
-      await say('Would you like to schedule a chat with me for tomorrow? If yes, reply with a time (e.g., 10:00 AM or 18:30). If not, just say "skip".');
+      await say('Would you like to schedule a chat or reminder with me for tomorrow? If yes, please reply with your preferred time slot (e.g., 10:00 AM or 18:30). If not, just say "skip".');
       return;
     }
 
