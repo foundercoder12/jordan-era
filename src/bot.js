@@ -1,3 +1,35 @@
+// SendGrid setup for email invites
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Utility: Generate a simple .ics calendar invite string
+function generateICS(subject, description, startTime, endTime, location) {
+  return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//JordanBot//EN\nBEGIN:VEVENT\nUID:${Date.now()}@jordanbot\nDTSTAMP:${formatICSDate(new Date())}\nDTSTART:${formatICSDate(startTime)}\nDTEND:${formatICSDate(endTime)}\nSUMMARY:${subject}\nDESCRIPTION:${description}\nLOCATION:${location || ''}\nEND:VEVENT\nEND:VCALENDAR`;
+}
+
+function formatICSDate(date) {
+  return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+
+// Utility: Send calendar invite email via SendGrid
+async function sendCalendarInviteEmail(to, subject, description, startTime, endTime, location) {
+  const icsContent = generateICS(subject, description, startTime, endTime, location);
+  const msg = {
+    to,
+    from: process.env.SENDER_EMAIL,
+    subject,
+    text: description,
+    attachments: [
+      {
+        content: Buffer.from(icsContent).toString('base64'),
+        filename: 'invite.ics',
+        type: 'text/calendar',
+        disposition: 'attachment',
+      },
+    ],
+  };
+  await sgMail.send(msg);
+}
 
 require('dotenv').config();
 // --- Gamification and Engagement Features ---
@@ -508,12 +540,70 @@ app.message(async ({ message, say }) => {
 
     console.log(`[BOT] Received message from user ${userId}: ${userText}`);
 
+
     // Get or create user session
     if (!userSessions.has(userId)) {
       userSessions.set(userId, createUserSession(userId));
     }
-
     const userSession = userSessions.get(userId);
+
+    // 1. Collect user email if not present
+    if (!userSession.email) {
+      // Simple email regex for validation
+      const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) {
+        userSession.email = emailMatch[0];
+        await say(`Thanks! I'll use ${userSession.email} to send you calendar invites for future reminders.`);
+      } else {
+        await say('Hey! To help you schedule reminders, could you share your email address? (I will only use it to send you calendar invites for our chats.)');
+        return;
+      }
+    }
+
+    // 2. Daily: Ask if user wants to schedule a chat for tomorrow (1% chance per message)
+    if (Math.random() < 0.01 && !userSession.awaitingSchedule) {
+      userSession.awaitingSchedule = true;
+      await say('Would you like to schedule a chat with me for tomorrow? If yes, reply with a time (e.g., 10:00 AM or 18:30). If not, just say "skip".');
+      return;
+    }
+
+    // 3. Handle scheduling response
+    if (userSession.awaitingSchedule) {
+      if (/skip|no|not/i.test(userText)) {
+        userSession.awaitingSchedule = false;
+        await say('No problem! I won’t schedule a chat for tomorrow.');
+        return;
+      }
+      // Try to parse time (very basic, can be improved)
+      const timeMatch = userText.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/);
+      if (timeMatch) {
+        // Build tomorrow's date with chosen time
+        const now = new Date();
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        let hour = parseInt(timeMatch[1], 10);
+        const minute = parseInt(timeMatch[2], 10);
+        const ampm = timeMatch[3];
+        if (ampm && /pm/i.test(ampm) && hour < 12) hour += 12;
+        if (ampm && /am/i.test(ampm) && hour === 12) hour = 0;
+        tomorrow.setHours(hour, minute, 0, 0);
+        const end = new Date(tomorrow.getTime() + 30 * 60000); // 30 min slot
+        // Send invite
+        await sendCalendarInviteEmail(
+          userSession.email,
+          'Jordan Chat Reminder',
+          'Time to chat with Jordan on Slack! Open Slack and say hi. 🏀',
+          tomorrow,
+          end,
+          'Slack (your workspace)'
+        );
+        userSession.awaitingSchedule = false;
+        await say(`Great! I’ve sent you a calendar invite for tomorrow at ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}. See you then!`);
+        return;
+      } else {
+        await say('Sorry, I didn’t understand the time. Please reply with a time like "10:00 AM" or "18:30", or say "skip".');
+        return;
+      }
+    }
 
 
   // (Streak messages removed)
