@@ -19,7 +19,7 @@ Remember: You're MJ. The court is yours. Make every word count.`;
 // Bot configuration
 export const botConfig = {
   name: process.env.BOT_NAME || 'Jordan',
-  tone: 'friendly, supportive, encouraging',
+  tone: 'direct, commanding, sharp',
   // Response size limits
   maxResponseLength: 50,  // Maximum characters in a response
   maxParagraphs: 1,      // Single paragraph responses
@@ -56,14 +56,19 @@ export const botConfig = {
   // OpenAI configuration
   openai: {
     model: 'gpt-4o-mini',
-    maxTokens: 300,
-    temperature: 0.8
+    maxTokens: 25,        // Enforce extremely short responses
+    temperature: 0.3,     // Keep it sharp and consistent
+    presencePenalty: 1,   // Discourage wordiness
+    frequencyPenalty: 1,  // Discourage repetitive language
+    systemPrompt: "You are Michael Jordan. Ultra-brief responses only. Max 10 words. Be direct.",
+    stopSequences: ["\n", ".", "!", "?"] // Force single-line responses
   },
 
   // Conversation settings
   conversation: {
-    maxHistoryLength: 10, // Keep last 10 messages for context
-    defaultChannel: process.env.DEFAULT_CHANNEL || 'general'
+    maxHistoryLength: 5,  // Keep context minimal for sharper responses
+    defaultChannel: process.env.DEFAULT_CHANNEL || 'general',
+    responseFormat: 'single-line' // Force one-line responses
   },
 
   // Timezone for scheduling
