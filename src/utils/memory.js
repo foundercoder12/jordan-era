@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Memory utilities
-const MEMORY_FILE = join(__dirname, '..', 'user_memory.json');
+const MEMORY_FILE = join(__dirname, '..', '..', 'data', 'user_memory.json');
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const mem0Client = new MemoryClient({ apiKey: MEM0_API_KEY });
 
