@@ -1,16 +1,18 @@
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import mem0ai from 'mem0ai';
-const { MemoryClient } = mem0ai;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Memory utilities
 const MEMORY_FILE = join(__dirname, '..', '..', 'data', 'user_memory.json');
-const MEM0_API_KEY = process.env.MEM0_API_KEY;
-const mem0Client = new MemoryClient({ apiKey: MEM0_API_KEY });
+
+// Ensure data directory exists
+const dataDir = join(__dirname, '..', '..', 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 export function loadMemory() {
   try {
@@ -69,26 +71,47 @@ export function createUserSession(userId) {
   };
 }
 
+// Simplified memory storage without mem0ai
 export async function storeMemory(userId, userText, aiResponse) {
   try {
-    const messages = [
-      { role: 'user', content: userText },
-      { role: 'assistant', content: aiResponse }
-    ];
-    const options = { user_id: userId, timestamp: Math.floor(Date.now() / 1000) };
-    return await mem0Client.add(messages, options);
+    const userSessions = loadMemory();
+    const session = userSessions.get(userId) || createUserSession(userId);
+    
+    session.conversationHistory.push({
+      timestamp: new Date(),
+      user: userText,
+      assistant: aiResponse
+    });
+    
+    // Keep only last 100 messages
+    if (session.conversationHistory.length > 100) {
+      session.conversationHistory = session.conversationHistory.slice(-100);
+    }
+    
+    userSessions.set(userId, session);
+    saveMemory(userSessions);
+    return true;
   } catch (error) {
-    console.error('Error storing memory in Mem0:', error.message);
-    return null;
+    console.error('Error storing memory:', error);
+    return false;
   }
 }
 
 export async function retrieveMemories(userId, limit = 5) {
   try {
-    const options = { user_id: userId, page_size: limit };
-    return await mem0Client.getAll(options) || [];
+    const userSessions = loadMemory();
+    const session = userSessions.get(userId);
+    if (!session) return [];
+    
+    return session.conversationHistory
+      .slice(-limit)
+      .map(m => ({
+        user_text: m.user,
+        ai_response: m.assistant,
+        timestamp: m.timestamp
+      }));
   } catch (error) {
-    console.error('Error retrieving memories from Mem0:', error.message);
+    console.error('Error retrieving memories:', error);
     return [];
   }
 }
