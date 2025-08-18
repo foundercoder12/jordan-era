@@ -28,5 +28,6 @@ EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start the application
+CMD ["node", "src/bot.js"]
 CMD ["npm", "start"]
 CMD ["npm", "start"]
