@@ -5,6 +5,28 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 // Utility: Generate a simple .ics calendar invite string
 function generateICS(subject, description, startTime, endTime, location) {
   return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//JordanBot//EN\nBEGIN:VEVENT\nUID:${Date.now()}@jordanbot\nDTSTAMP:${formatICSDate(new Date())}\nDTSTART:${formatICSDate(startTime)}\nDTEND:${formatICSDate(endTime)}\nSUMMARY:${subject}\nDESCRIPTION:${description}\nLOCATION:${location || ''}\nEND:VEVENT\nEND:VCALENDAR`;
+      if (/skip|no|not/i.test(userText)) {
+        userSession.awaitingSchedule = false;
+        await say('No problem! I won't schedule a chat for now.');
+        return;
+      }
+
+      // Check if we have the user's email before proceeding with scheduling
+      if (!userSession.email) {
+        const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        if (emailMatch) {
+          userSession.email = emailMatch[0];
+          persistentEmails[userId] = userSession.email;
+          saveEmails(persistentEmails);
+          await say(`Thanks! I'll use ${userSession.email} for your calendar invite. Now, what time would you like to schedule the reminder for?`);
+          return;
+        } else {
+          await say('To set up your reminder, I\'ll need your email address to send you a calendar invite. Could you please share it with me?');
+          return;
+        }
+      }
+
+      // Use ChatGPT to convert any time phrase to ISO date and 24-hour timeEND:VEVENT\nEND:VCALENDAR`;
 }
 
 function formatICSDate(date) {
@@ -531,40 +553,40 @@ app.message(async ({ message, say }) => {
     }
     const userSession = userSessions.get(userId);
 
-    // 1. Collect user email if not present (persistent)
-    if (!userSession.email) {
-      // Try to load from persistent storage
-      if (persistentEmails[userId]) {
-        userSession.email = persistentEmails[userId];
-      } else {
-        // Simple email regex for validation
-        const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-        if (emailMatch) {
-          userSession.email = emailMatch[0];
-          persistentEmails[userId] = userSession.email;
-          saveEmails(persistentEmails);
-          await say(`Thanks! I'll use ${userSession.email} to send you calendar invites for future reminders.`);
-        } else {
-          await say('Hey! To help you schedule reminders, could you share your email address? (I will only use it to send you calendar invites for our chats.)');
-          return;
-        }
-      }
+    // Try to load email from persistent storage if we don't have it
+    if (!userSession.email && persistentEmails[userId]) {
+      userSession.email = persistentEmails[userId];
     }
 
-
-  // Let OpenAI/Jordan decide when to offer reminders based on conversation context
+    // Let OpenAI/Jordan decide when to offer reminders based on conversation context
   userSession.exchangeCount = (userSession.exchangeCount || 0) + 1;
 
   // If user is in reminder scheduling flow, handle as before (see below)
 
 
-    // 3. Handle scheduling response (if userSession.awaitingSchedule)
+        // 3. Handle scheduling response (if userSession.awaitingSchedule)
     if (userSession.awaitingSchedule) {
       if (/skip|no|not/i.test(userText)) {
         userSession.awaitingSchedule = false;
-        await say('No problem! I won’t schedule a chat for now.');
+        await say("No problem! I won't schedule a chat for now.");
         return;
       }
+
+      // Check if we have the user's email before proceeding with scheduling
+      if (!userSession.email) {
+        const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        if (emailMatch) {
+          userSession.email = emailMatch[0];
+          persistentEmails[userId] = userSession.email;
+          saveEmails(persistentEmails);
+          await say(`Thanks! I'll use ${userSession.email} for your calendar invite. Now, what time would you like to schedule the reminder for?`);
+          return;
+        } else {
+          await say("To set up your reminder, I'll need your email address to send you a calendar invite. Could you please share it with me?");
+          return;
+        }
+      }
+
       // Use ChatGPT to convert any time phrase to ISO date and 24-hour time
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const conversionPrompt = `Convert this to ISO date (YYYY-MM-DD) and 24-hour time (HH:mm): "${userText}". Reply only with a JSON object: {\"date\":\"YYYY-MM-DD\",\"time\":\"HH:mm\"}.`;
