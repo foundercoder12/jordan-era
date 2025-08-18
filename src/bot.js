@@ -572,13 +572,15 @@ app.message(async ({ message, say }) => {
     }
 
 
-    // 2. Intent detection: Use ChatGPT to extract reminder/schedule intent and time
+    // 2. Intent detection: Use ChatGPT to extract reminder/schedule intent and time, but only after 10+ exchanges
     const reminderIntent = /(remind|reminder|calendar|invite|schedule|meeting|appointment|event|add to calendar|set.*reminder|tomorrow|at \d{1,2}:\d{2})/i.test(userText);
-    if ((reminderIntent || Math.random() < 0.01) && !userSession.awaitingSchedule) {
+    // Count user-bot exchanges in this session
+    userSession.exchangeCount = (userSession.exchangeCount || 0) + 1;
+    if ((reminderIntent || Math.random() < 0.01) && !userSession.awaitingSchedule && userSession.exchangeCount >= 10) {
       userSession.awaitingSchedule = true;
       // Use OpenAI to extract date/time from userText
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const extractionPrompt = `Extract the date and time for a reminder from this message: "${userText}". If the date or time is not clear, reply with a natural language question to ask the user for clarification. If both are clear, reply with a JSON object like {\"date\":\"2025-08-19\",\"time\":\"11:00\"}.`;
+      const extractionPrompt = `Extract the date and time for a reminder from this message: "${userText}". If the date or time is not clear, reply with a natural language question to ask the user for clarification. If both are clear, reply with a JSON object like {\"date\":\"YYYY-MM-DD\",\"time\":\"HH:mm\"}. The date must be in ISO format (YYYY-MM-DD) and the time in 24-hour format (HH:mm).`;
       let extracted = null;
       let clarification = null;
       try {
@@ -599,30 +601,41 @@ app.message(async ({ message, say }) => {
         clarification = "Sorry, I couldn't understand the time. Please reply with a time like '10:00 AM' or '18:30', or say 'skip'.";
       }
       if (extracted && extracted.date && extracted.time) {
-        // Build date object for invite
-        const [year, month, day] = extracted.date.split('-').map(Number);
-        const [hour, minute] = extracted.time.split(':').map(Number);
-        const start = new Date(year, month - 1, day, hour, minute);
-        const end = new Date(start.getTime() + 30 * 60000);
-        // Use the user's original message as context in the invite
-        const reminderSubject = `Reminder: ${userText.substring(0, 60)}${userText.length > 60 ? '...' : ''}`;
-        const reminderDescription = `You asked for this reminder in our chat:\n\n"${userText}"\n\nSee you on Slack! 🏀`;
-        await sendCalendarInviteEmail(
-          userSession.email,
-          reminderSubject,
-          reminderDescription,
-          start,
-          end,
-          'Slack (your workspace)'
-        );
-        userSession.awaitingSchedule = false;
-        await say(`Great! I’ve sent you a calendar invite for ${extracted.date} at ${extracted.time}. See you then!`);
-        return;
+        // Validate date and time format strictly (YYYY-MM-DD and HH:mm)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const timeRegex = /^\d{2}:\d{2}$/;
+        if (dateRegex.test(extracted.date) && timeRegex.test(extracted.time)) {
+          const [year, month, day] = extracted.date.split('-').map(Number);
+          const [hour, minute] = extracted.time.split(':').map(Number);
+          const start = new Date(year, month - 1, day, hour, minute);
+          if (isNaN(start.getTime())) {
+            await say('Sorry, the date or time I extracted seems invalid. Could you rephrase or specify the date and time more clearly?');
+            return;
+          }
+          const end = new Date(start.getTime() + 30 * 60000);
+          // Use the user's original message as context in the invite
+          const reminderSubject = `Reminder: ${userText.substring(0, 60)}${userText.length > 60 ? '...' : ''}`;
+          const reminderDescription = `You asked for this reminder in our chat:\n\n"${userText}"\n\nSee you on Slack! 🏀`;
+          await sendCalendarInviteEmail(
+            userSession.email,
+            reminderSubject,
+            reminderDescription,
+            start,
+            end,
+            'Slack (your workspace)'
+          );
+          userSession.awaitingSchedule = false;
+          await say(`Great! I’ve sent you a calendar invite for ${extracted.date} at ${extracted.time}. See you then!`);
+          return;
+        } else {
+          await say('Sorry, I need the date in YYYY-MM-DD format and time in 24-hour HH:mm format. Could you rephrase or specify the date and time more clearly?');
+          return;
+        }
       } else {
         await say(clarification);
         return;
       }
-    }
+  }
 
     // 3. Handle scheduling response
     if (userSession.awaitingSchedule) {
