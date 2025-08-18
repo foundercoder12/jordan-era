@@ -27,12 +27,22 @@ const openai = new OpenAI({
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Load user sessions from persistent storage
+const userSessions = loadMemory();
+
+// Auto-save memory every 5 minutes
+setInterval(() => saveMemory(userSessions), 5 * 60 * 1000);
+
 // Initialize health check endpoint first
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    memory: {
+      sessions: userSessions.size,
+      heapUsed: process.memoryUsage().heapUsed
+    }
   });
 });
 
