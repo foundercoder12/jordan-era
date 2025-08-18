@@ -3,11 +3,13 @@ import OpenAI from 'openai';
 import cron from 'node-cron';
 import moment from 'moment-timezone';
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import dotenv from 'dotenv';
-
-import { MJ_CHALLENGES, MEME_CONFIG, BOT_PERSONALITY, MEME_KEYWORDS } from './config/bot-config.js';
-import { sendCalendarInviteEmail } from './utils/email.js';
-import { loadMemory, saveMemory, createUserSession, storeMemory, retrieveMemories } from './utils/memory.js';
+import sgMail from '@sendgrid/mail';
+import { MemoryClient } from 'mem0ai';
 
 // Initialize environment variables
 dotenv.config();
