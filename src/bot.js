@@ -13,7 +13,7 @@ import { dirname } from 'path';
 
 import { MJ_CHALLENGES, MEME_CONFIG, BOT_PERSONALITY, MEME_KEYWORDS } from './config/bot-config.js';
 import { sendCalendarInviteEmail } from './utils/email.js';
-import { loadMemory, saveMemory, createUserSession, storeMemory, retrieveMemories } from './utils/memory.js';
+import { sessionStore } from './utils/sessionStore.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -22,9 +22,6 @@ console.log('SLACK_BOT_TOKEN exists:', !!process.env.SLACK_BOT_TOKEN);
 console.log('SLACK_SIGNING_SECRET exists:', !!process.env.SLACK_SIGNING_SECRET);
 console.log('SLACK_APP_TOKEN exists:', !!process.env.SLACK_APP_TOKEN);
 console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-
-// Initialize user sessions store
-export const userSessions = new Map();
 
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -40,19 +37,6 @@ const openai = new OpenAI({
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Load user sessions from persistent storage
-console.log('💾 Loading user sessions from persistent storage...');
-const userSessions = loadMemory();
-console.log(`📊 Loaded ${userSessions.size} user sessions`);
-
-// Auto-save memory every 5 minutes
-console.log('⏰ Setting up auto-save for memory...');
-setInterval(() => {
-  console.log('💾 Auto-saving memory...');
-  saveMemory(userSessions);
-  console.log(`📊 Saved ${userSessions.size} user sessions`);
-}, 5 * 60 * 1000);
-
 // Initialize health check endpoint first
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -60,7 +44,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: {
-      sessions: userSessions.size,
+      sessions: sessionStore.sessions.size,
       heapUsed: process.memoryUsage().heapUsed
     }
   });
