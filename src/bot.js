@@ -93,7 +93,16 @@ slackApp.client.on('connected', () => {
   console.log('✅ Successfully connected to Slack!');
 });
 
-// Log all incoming messages
+// Log all events first
+slackApp.use(async ({ event, next }) => {
+  console.log('🎯 Received event:', {
+    type: event.type,
+    ...event
+  });
+  await next();
+});
+
+// Handle and log all incoming messages
 slackApp.message(async ({ message, say }) => {
   console.log('📨 Received message:', {
     text: message.text,
@@ -101,15 +110,50 @@ slackApp.message(async ({ message, say }) => {
     channel: message.channel,
     timestamp: message.ts
   });
-});
 
-// Log all events
-slackApp.use(async ({ event, next }) => {
-  console.log('🎯 Received event:', {
-    type: event.type,
-    ...event
-  });
-  await next();
+  try {
+    console.log('🤔 Processing message...');
+    // Get user session or create new one
+    let userSession = userSessions.get(message.user);
+    if (!userSession) {
+      console.log('👤 Creating new user session');
+      userSession = createUserSession();
+      userSessions.set(message.user, userSession);
+    }
+
+    // Get conversation history
+    const memories = await retrieveMemories(message.user);
+    
+    console.log('🧠 Generating response with OpenAI...');
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { 
+          role: "system", 
+          content: BOT_PERSONALITY
+        },
+        ...memories.map(m => ({ role: "assistant", content: m.response })),
+        { 
+          role: "user", 
+          content: message.text 
+        }
+      ]
+    });
+
+    const response = completion.choices[0].message.content;
+    console.log('💬 Sending response:', response);
+    
+    // Store the interaction
+    await storeMemory(message.user, message.text, response);
+    
+    // Send the response
+    await say(response);
+    console.log('✅ Response sent successfully');
+    
+  } catch (error) {
+    console.error('❌ Error processing message:', error);
+    await say("I apologize, but I'm having trouble processing your message right now. Could you try again in a moment?");
+  }
 });
 
 // Start the application
