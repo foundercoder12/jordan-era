@@ -106,6 +106,57 @@ slackApp.message(async ({ message, say }) => {
     // Get user session or create new one
     const userSession = sessionStore.get(message.user);
 
+    // Check for email in the message
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const emailMatch = message.text.match(emailRegex);
+    if (emailMatch) {
+      userSession.email = emailMatch[0];
+      await say(`Thanks! I'll use ${userSession.email} for calendar invites. What time would you like to schedule our chat?`);
+      userSession.awaitingSchedule = true;
+      return;
+    }
+
+    // If we're awaiting schedule and have email
+    if (userSession.awaitingSchedule && userSession.email) {
+      try {
+        // Try to parse time from message
+        const timeMatch = message.text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+        if (timeMatch) {
+          let [_, hours, minutes = '00', meridian] = timeMatch;
+          hours = parseInt(hours);
+          if (meridian && meridian.toLowerCase() === 'pm' && hours < 12) hours += 12;
+          if (meridian && meridian.toLowerCase() === 'am' && hours === 12) hours = 0;
+
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(hours, parseInt(minutes), 0, 0);
+
+          const endTime = new Date(tomorrow);
+          endTime.setHours(endTime.getHours() + 1);
+
+          await sendCalendarInviteEmail(
+            userSession.email,
+            'Chat with Jordan - Your AI Coach',
+            'A meaningful conversation about work and life with your AI coach Jordan.',
+            tomorrow,
+            endTime,
+            'Slack'
+          );
+
+          userSession.awaitingSchedule = false;
+          await say(`Perfect! I've sent a calendar invite to ${userSession.email} for tomorrow at ${hours}:${minutes.padStart(2, '0')}. Looking forward to our chat!`);
+          return;
+        } else {
+          await say("I'm having trouble understanding the time. Could you specify it in a format like '11:00 am' or '14:00'?");
+          return;
+        }
+      } catch (error) {
+        console.error('Error scheduling:', error);
+        await say("I had trouble scheduling that. Could you try specifying the time again?");
+        return;
+      }
+    }
+
     // Get conversation history
     const memories = await sessionStore.getMemories(message.user);
     console.log('📝 Retrieved memories:', memories.length);
