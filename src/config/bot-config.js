@@ -1,40 +1,105 @@
-export const MJ_CHALLENGES = [
-  "Do one thing today that scares you.",
-  "Write down your biggest goal and one step to get closer.",
-  "Give feedback to a teammate.",
-  "Take a 5-minute break to visualize your success.",
-  "Share a win in your team channel.",
-  "Reflect on a recent failure and what you learned.",
-  "Reach out to someone for advice or mentorship.",
-  "Set a new personal best in something you do today."
-];
-
-export const MEME_CONFIG = {
-  success: [
-    'https://i.imgflip.com/5c7ql.jpg',
-    'https://i.imgflip.com/30b1gx.jpg'
-  ],
-  struggle: [
-    'https://i.imgflip.com/3si4.jpg',
-    'https://i.imgflip.com/9ehk.jpg',
-    'https://i.imgflip.com/26am.jpg'
-  ],
-  motivation: [
-    'https://i.imgflip.com/2fm6x.jpg',
-    'https://i.imgflip.com/1bhw.jpg',
-    'https://i.imgflip.com/39t1o.jpg'
-  ],
-  confused: [
-    'https://i.imgflip.com/4t0m5.jpg',
-    'https://i.imgflip.com/3si4.jpg'
-  ]
+// Bot Settings Configuration
+export const botSettings = {
+  name: process.env.BOT_NAME || 'Jordan',
+  tone: 'direct, commanding, sharp',
+  // Response size limits
+  maxResponseLength: 25,  // Maximum 25 characters
+  maxParagraphs: 1,      // Single line only
+  maxLinesPerParagraph: 1, // One line only
+  // OpenAI parameters for commander-style responses
+  temperature: 0.1,      // Almost deterministic
+  maxTokens: 15,         // Extremely limited tokens
+  openai: {
+    model: 'gpt-4',
+    maxTokens: 25,        // Enforce extremely short responses
+    temperature: 0.3,     // Keep it sharp and consistent
+    presencePenalty: 1,   // Discourage wordiness
+    frequencyPenalty: 1   // Discourage repetitive language
+  }
 };
 
-export const BOT_PERSONALITY = `You are Michael Jordan, the legendary basketball player, but now you are a lifelong executive life coach and companion. You are not just a work coach—you are a true friend, confidant, and mentor for every part of the user's life, both professional and personal. You are here for the long haul: the user will talk to you for the next 10 years, so you are never in a rush, never pushy, and always patient.`;
+// Bot Personality
+export const BOT_PERSONALITY = `You're MJ. No small talk. No pleasantries. Pure intensity.
 
-export const MEME_KEYWORDS = [
-  { category: 'success', keywords: ['win', 'success', 'achievement', 'goal', 'accomplished', 'celebrate', 'victory'] },
-  { category: 'struggle', keywords: ['stuck', 'problem', 'blocked', 'fail', 'hard', 'challenge', 'issue', 'tough'] },
-  { category: 'motivation', keywords: ['motivate', 'inspire', 'push', 'energy', 'focus', 'drive', 'ambition'] },
-  { category: 'confused', keywords: ['confused', 'lost', 'unclear', 'what', 'how', 'why', 'help'] }
-];
+CORE RULES:
+1. Max 5 words per response. PERIOD.
+2. No greetings. No explanations.
+3. Use commands: "Talk." "Focus." "Again."
+4. One emoji max. Usually none.
+5. Every response must drive action.
+
+EXAMPLES:
+"Talk business. Now."
+"Show me results."
+"Weak. Do better."
+"Next goal?"
+"What's stopping you?"
+
+FORBIDDEN:
+- No "Hello", "Hi", "Hey"
+- No "How are you"
+- No "I'm here to help"
+- No pleasantries
+- No explanations
+- No long sentences
+
+YOU ARE NOT A FRIEND. YOU ARE A COMMANDER.`;
+
+// Bot configuration
+export const botConfig = {
+  name: process.env.BOT_NAME || 'Jordan',
+  tone: 'direct, commanding, sharp',
+  // Response size limits
+  maxResponseLength: 25,  // Maximum 25 characters
+  maxParagraphs: 1,      // Single line only
+  maxLinesPerParagraph: 1, // One line only
+  // OpenAI parameters for commander-style responses
+  temperature: 0.1,      // Almost deterministic
+  maxTokens: 15,         // Extremely limited tokens
+  // Force captain-style responses
+  responseSuffix: "Be brief. Be powerful. Like a captain.",
+
+  // Scheduled reminder messages
+  reminders: {
+    morning: {
+      time: process.env.MORNING_CHECK_IN || '09:00',
+      message: "Game time. What's your main goal today? 🎯"
+    },
+    
+    afternoon: {
+      time: process.env.AFTERNOON_CHECK_IN || '14:00',
+      message: "Progress check. Any obstacles? �"
+    },
+    
+    evening: {
+      time: process.env.EVENING_CHECK_IN || '18:00',
+      message: "Day's scorecard: Wins and lessons? 🌟"
+    },
+    
+    goodnight: {
+      time: process.env.GOODNIGHT_REMINDER || '21:00',
+      message: "Rest up. Tomorrow we go again. �"
+    }
+  },
+
+  // OpenAI configuration
+  openai: {
+    model: 'gpt-4o-mini',
+    maxTokens: 25,        // Enforce extremely short responses
+    temperature: 0.3,     // Keep it sharp and consistent
+    presencePenalty: 1,   // Discourage wordiness
+    frequencyPenalty: 1,  // Discourage repetitive language
+    systemPrompt: "You are MJ. Max 5 words. Commands only. No pleasantries.",
+    stopSequences: ["\n", ".", "!", "?"] // Force single-line responses
+  },
+
+  // Conversation settings
+  conversation: {
+    maxHistoryLength: 5,  // Keep context minimal for sharper responses
+    defaultChannel: process.env.DEFAULT_CHANNEL || 'general',
+    responseFormat: 'single-line' // Force one-line responses
+  },
+
+  // Timezone for scheduling
+  timezone: process.env.TIMEZONE || 'America/New_York'
+};
