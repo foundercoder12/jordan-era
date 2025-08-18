@@ -17,12 +17,18 @@ import { loadMemory, saveMemory, createUserSession, storeMemory, retrieveMemorie
 
 // Initialize environment variables
 dotenv.config();
+console.log('🔍 Environment loaded, checking critical variables...');
+console.log('SLACK_BOT_TOKEN exists:', !!process.env.SLACK_BOT_TOKEN);
+console.log('SLACK_SIGNING_SECRET exists:', !!process.env.SLACK_SIGNING_SECRET);
+console.log('SLACK_APP_TOKEN exists:', !!process.env.SLACK_APP_TOKEN);
+console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
 
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Initialize OpenAI
+console.log('📚 Initializing OpenAI...');
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -32,10 +38,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Load user sessions from persistent storage
+console.log('💾 Loading user sessions from persistent storage...');
 const userSessions = loadMemory();
+console.log(`📊 Loaded ${userSessions.size} user sessions`);
 
 // Auto-save memory every 5 minutes
-setInterval(() => saveMemory(userSessions), 5 * 60 * 1000);
+console.log('⏰ Setting up auto-save for memory...');
+setInterval(() => {
+  console.log('💾 Auto-saving memory...');
+  saveMemory(userSessions);
+  console.log(`📊 Saved ${userSessions.size} user sessions`);
+}, 5 * 60 * 1000);
 
 // Initialize health check endpoint first
 app.get('/health', (req, res) => {
@@ -58,11 +71,26 @@ app.get('/', (req, res) => {
 });
 
 // Initialize Slack app
+console.log('🤖 Initializing Slack app...');
 const slackApp = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
   socketMode: true,
   appToken: process.env.SLACK_APP_TOKEN,
+});
+
+// Add error listeners
+slackApp.error(async (error) => {
+  console.error('🔴 Slack App Error:', error);
+});
+
+// Add connection opened listener
+slackApp.client.on('connecting', () => {
+  console.log('🔄 Attempting to connect to Slack...');
+});
+
+slackApp.client.on('connected', () => {
+  console.log('✅ Successfully connected to Slack!');
 });
 
 // Start the application
