@@ -23,6 +23,9 @@ console.log('SLACK_SIGNING_SECRET exists:', !!process.env.SLACK_SIGNING_SECRET);
 console.log('SLACK_APP_TOKEN exists:', !!process.env.SLACK_APP_TOKEN);
 console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
 
+// Initialize user sessions store
+export const userSessions = new Map();
+
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -117,15 +120,10 @@ slackApp.message(async ({ message, say }) => {
   try {
     console.log('🤔 Processing message...');
     // Get user session or create new one
-    let userSession = userSessions.get(message.user);
-    if (!userSession) {
-      console.log('👤 Creating new user session');
-      userSession = createUserSession();
-      userSessions.set(message.user, userSession);
-    }
+    const userSession = sessionStore.get(message.user);
 
     // Get conversation history
-    const memories = await retrieveMemories(message.user);
+    const memories = await sessionStore.getMemories(message.user);
     console.log('📝 Retrieved memories:', memories.length);
     
     // Create enhanced conversation context with memory
@@ -170,7 +168,7 @@ slackApp.message(async ({ message, say }) => {
     console.log('💬 Sending response:', response);
     
     // Store the interaction
-    await storeMemory(message.user, message.text, response);
+    await sessionStore.storeMemory(message.user, message.text, response);
     
     // Send the response
     await say(response);
