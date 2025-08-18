@@ -1,7 +1,8 @@
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { MemoryClient } from 'mem0ai';
+import mem0ai from 'mem0ai';
+const { MemoryClient } = mem0ai;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

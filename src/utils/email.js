@@ -1,4 +1,5 @@
-import sgMail from '@sendgrid/mail';
+import sendgrid from '@sendgrid/mail';
+const sgMail = sendgrid;
 
 // SendGrid setup for email invites
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);

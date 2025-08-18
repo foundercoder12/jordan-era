@@ -1,7 +1,11 @@
-import { App } from '@slack/bolt';
+import pkg from '@slack/bolt';
+const { App } = pkg;
+
 import OpenAI from 'openai';
-import cron from 'node-cron';
-import moment from 'moment-timezone';
+import nodeCron from 'node-cron';
+const cron = nodeCron;
+import momentTz from 'moment-timezone';
+const moment = momentTz;
 import express from 'express';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
