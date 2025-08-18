@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-import { MJ_CHALLENGES, MEME_CONFIG, BOT_PERSONALITY, MEME_KEYWORDS } from './config/bot-config.js';
+import { botConfig, MJ_CHALLENGES, MEME_CONFIG, BOT_PERSONALITY, MEME_KEYWORDS } from './config/bot-config.js';
 import { sendCalendarInviteEmail } from './utils/email.js';
 import { sessionStore } from './utils/sessionStore.js';
 
@@ -195,8 +195,10 @@ slackApp.message(async ({ message, say }) => {
     const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages,
-      temperature: 0.8,
-      max_tokens: 300
+        temperature: botConfig.openai.temperature,
+        max_tokens: botConfig.openai.maxTokens,
+        presence_penalty: botConfig.openai.presencePenalty,
+        frequency_penalty: botConfig.openai.frequencyPenalty
     });
 
     const response = completion.choices[0].message.content;
