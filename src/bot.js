@@ -529,6 +529,10 @@ Before you go:
 
 Sweet dreams! You've got this! 💫`;
 
+// Persistent email storage
+const { loadEmails, saveEmails } = require('./emailStore');
+let persistentEmails = loadEmails();
+
 // Handle direct messages
 app.message(async ({ message, say }) => {
   try {
@@ -547,16 +551,23 @@ app.message(async ({ message, say }) => {
     }
     const userSession = userSessions.get(userId);
 
-    // 1. Collect user email if not present
+    // 1. Collect user email if not present (persistent)
     if (!userSession.email) {
-      // Simple email regex for validation
-      const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-      if (emailMatch) {
-        userSession.email = emailMatch[0];
-        await say(`Thanks! I'll use ${userSession.email} to send you calendar invites for future reminders.`);
+      // Try to load from persistent storage
+      if (persistentEmails[userId]) {
+        userSession.email = persistentEmails[userId];
       } else {
-        await say('Hey! To help you schedule reminders, could you share your email address? (I will only use it to send you calendar invites for our chats.)');
-        return;
+        // Simple email regex for validation
+        const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        if (emailMatch) {
+          userSession.email = emailMatch[0];
+          persistentEmails[userId] = userSession.email;
+          saveEmails(persistentEmails);
+          await say(`Thanks! I'll use ${userSession.email} to send you calendar invites for future reminders.`);
+        } else {
+          await say('Hey! To help you schedule reminders, could you share your email address? (I will only use it to send you calendar invites for our chats.)');
+          return;
+        }
       }
     }
 
