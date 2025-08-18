@@ -78,11 +78,28 @@ export async function storeMemory(userId, userText, aiResponse) {
     const userSessions = loadMemory();
     const session = userSessions.get(userId) || createUserSession(userId);
     
-    session.conversationHistory.push({
-      timestamp: new Date(),
-      user: userText,
-      assistant: aiResponse
-    });
+    // Initialize conversation history if it doesn't exist
+    if (!userSession.conversationHistory) {
+      userSession.conversationHistory = [];
+    }
+
+    // Store the user's message
+    if (userText) {
+      userSession.conversationHistory.push({
+        role: 'user',
+        content: userText,
+        timestamp: new Date()
+      });
+    }
+
+    // Store the bot's response
+    if (aiResponse) {
+      userSession.conversationHistory.push({
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date()
+      });
+    }
     
     // Keep only last 100 messages
     if (session.conversationHistory.length > 100) {
@@ -98,21 +115,32 @@ export async function storeMemory(userId, userText, aiResponse) {
   }
 }
 
-export async function retrieveMemories(userId, limit = 5) {
+export async function retrieveMemories(userId, limit = 10) {
   try {
-    const userSessions = loadMemory();
-    const session = userSessions.get(userId);
-    if (!session) return [];
+    console.log('📖 Retrieving memories for user:', userId);
+    const userSession = userSessions.get(userId);
+    if (!userSession) {
+      console.log('⚠️ No user session found');
+      return [];
+    }
+
+    // Ensure we have a valid conversation history
+    const history = userSession.conversationHistory || [];
     
-    return session.conversationHistory
-      .slice(-limit)
+    // Filter out any invalid entries and ensure required fields
+    const validMemories = history
+      .filter(m => m && (m.content || m.response)) // Must have either content or response
       .map(m => ({
-        user_text: m.user,
-        ai_response: m.assistant,
-        timestamp: m.timestamp
-      }));
+        role: m.role || 'assistant',
+        content: m.content || m.response,
+        timestamp: m.timestamp || new Date()
+      }))
+      .slice(-limit); // Get only the most recent ones
+
+    console.log(`📚 Found ${validMemories.length} valid memories`);
+    return validMemories;
   } catch (error) {
-    console.error('Error retrieving memories:', error);
+    console.error('❌ Error retrieving memories:', error);
     return [];
   }
 }

@@ -126,6 +126,7 @@ slackApp.message(async ({ message, say }) => {
 
     // Get conversation history
     const memories = await retrieveMemories(message.user);
+    console.log('📝 Retrieved memories:', memories.length);
     
     // Create enhanced conversation context with memory
     const memoryContext = `User Context:
@@ -134,19 +135,33 @@ slackApp.message(async ({ message, say }) => {
     - Progress Streak: ${userSession.progress?.currentStreak || 0} days`;
 
     console.log('🧠 Generating response with OpenAI...');
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
+    
+    // Convert memories to valid OpenAI messages
+    const memoryMessages = memories
+        .filter(m => m && m.content) // Filter out null or invalid memories
+        .map(m => ({
+            role: m.role || "assistant",
+            content: m.content || m.response || ""
+        }))
+        .filter(m => m.content); // Final check for valid content
+
+    const messages = [
         { 
-          role: "system", 
-          content: `${BOT_PERSONALITY}\n\n${memoryContext}`
+            role: "system", 
+            content: `${BOT_PERSONALITY}\n\n${memoryContext}`
         },
-        ...memories.map(m => ({ role: "assistant", content: m.response })),
+        ...memoryMessages,
         { 
-          role: "user", 
-          content: message.text 
+            role: "user", 
+            content: message.text 
         }
-      ],
+    ];
+
+    console.log('📤 Sending messages to OpenAI:', messages.length);
+    
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages,
       temperature: 0.8,
       max_tokens: 300
     });
