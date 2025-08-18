@@ -561,12 +561,53 @@ app.message(async ({ message, say }) => {
     }
 
 
-    // 2. Intent detection: Check if user is asking for a reminder or schedule
+    // 2. Intent detection: Use ChatGPT to extract reminder/schedule intent and time
     const reminderIntent = /(remind|reminder|calendar|invite|schedule|meeting|appointment|event|add to calendar|set.*reminder|tomorrow|at \d{1,2}:\d{2})/i.test(userText);
     if ((reminderIntent || Math.random() < 0.01) && !userSession.awaitingSchedule) {
       userSession.awaitingSchedule = true;
-      await say('Would you like to schedule a chat or reminder with me for tomorrow? If yes, please reply with your preferred time slot (e.g., 10:00 AM or 18:30). If not, just say "skip".');
-      return;
+      // Use OpenAI to extract date/time from userText
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const extractionPrompt = `Extract the date and time for a reminder from this message: "${userText}". If the date or time is not clear, reply with a natural language question to ask the user for clarification. If both are clear, reply with a JSON object like {\"date\":\"2025-08-19\",\"time\":\"11:00\"}.`;
+      let extracted = null;
+      let clarification = null;
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are a helpful assistant that extracts scheduling information from user messages." },
+            { role: "user", content: extractionPrompt }
+          ]
+        });
+        const reply = completion.choices[0].message.content.trim();
+        if (reply.startsWith('{')) {
+          extracted = JSON.parse(reply);
+        } else {
+          clarification = reply;
+        }
+      } catch (e) {
+        clarification = "Sorry, I couldn't understand the time. Please reply with a time like '10:00 AM' or '18:30', or say 'skip'.";
+      }
+      if (extracted && extracted.date && extracted.time) {
+        // Build date object for invite
+        const [year, month, day] = extracted.date.split('-').map(Number);
+        const [hour, minute] = extracted.time.split(':').map(Number);
+        const start = new Date(year, month - 1, day, hour, minute);
+        const end = new Date(start.getTime() + 30 * 60000);
+        await sendCalendarInviteEmail(
+          userSession.email,
+          'Jordan Chat Reminder',
+          'Time to chat with Jordan on Slack! Open Slack and say hi. 🏀',
+          start,
+          end,
+          'Slack (your workspace)'
+        );
+        userSession.awaitingSchedule = false;
+        await say(`Great! I’ve sent you a calendar invite for ${extracted.date} at ${extracted.time}. See you then!`);
+        return;
+      } else {
+        await say(clarification);
+        return;
+      }
     }
 
     // 3. Handle scheduling response
