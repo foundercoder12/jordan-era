@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A motivational Slack bot that acts like a supportive friend, helping users set daily goals and stay motivated",
   "main": "src/bot.js",
+  "type": "module",
   "scripts": {
     "start": "node src/bot.js",
     "dev": "nodemon src/bot.js",
