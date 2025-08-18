@@ -53,26 +53,6 @@ function getRandomChallenge() {
   return MJ_CHALLENGES[Math.floor(Math.random() * MJ_CHALLENGES.length)];
 }
 
-// Feedback loop (send a message with Slack buttons)
-async function sendFeedbackPrompt(say, userId) {
-  await say({
-    channel: userId,
-    text: "How helpful was my last advice?",
-    blocks: [
-      {
-        type: "section",
-        text: { type: "mrkdwn", text: "How helpful was my last advice?" }
-      },
-      {
-        type: "actions",
-        elements: [
-          { type: "button", text: { type: "plain_text", text: "👍 Helpful" }, value: "helpful", action_id: "feedback_helpful" },
-          { type: "button", text: { type: "plain_text", text: "👎 Not Helpful" }, value: "not_helpful", action_id: "feedback_not_helpful" }
-        ]
-      }
-    ]
-  });
-}
 
 // Social feature: share win in public channel
 async function shareWin(say, userId, winText) {
@@ -658,10 +638,6 @@ app.message(async ({ message, say }) => {
       await say({ text: `MJ Challenge: ${getRandomChallenge()}` });
     }
 
-    // Rarely ask for feedback (0.5% chance)
-    if (Math.random() < 0.005) {
-      await sendFeedbackPrompt(say, userId);
-    }
 
     // Retrieve relevant memories from Mem0
     const mem0Memories = await retrieveMemories(userId, userText);
@@ -731,6 +707,67 @@ app.message(async ({ message, say }) => {
     // If Jordan offers a reminder and user accepts, set awaitingSchedule
     if (/would you like me to remind you about this\?/i.test(aiResponse) && !userSession.awaitingSchedule) {
       userSession.awaitingSchedule = true;
+    }
+
+    // If user just confirmed a reminder time, send email invite
+    if (userSession.awaitingSchedule && /\b(\d{1,2})(:|\s)?(\d{2})?\s?(am|pm)?\b/i.test(userText)) {
+      // Use ChatGPT to convert any time phrase to ISO date and 24-hour time
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const conversionPrompt = `Convert this to ISO date (YYYY-MM-DD) and 24-hour time (HH:mm): "${userText}". Reply only with a JSON object: {\"date\":\"YYYY-MM-DD\",\"time\":\"HH:mm\"}.`;
+      let extracted = null;
+      let clarification = null;
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are a helpful assistant that extracts and converts scheduling information from user messages." },
+            { role: "user", content: conversionPrompt }
+          ]
+        });
+        const reply = completion.choices[0].message.content.trim();
+        if (reply.startsWith('{')) {
+          extracted = JSON.parse(reply);
+        } else {
+          clarification = reply;
+        }
+      } catch (e) {
+        clarification = "Sorry, I couldn't understand the time. Please reply with a time like '10:00 AM' or '18:30', or say 'skip'.";
+      }
+      if (extracted && extracted.date && extracted.time) {
+        // Validate date and time format strictly (YYYY-MM-DD and HH:mm)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const timeRegex = /^\d{2}:\d{2}$/;
+        if (dateRegex.test(extracted.date) && timeRegex.test(extracted.time)) {
+          const [year, month, day] = extracted.date.split('-').map(Number);
+          const [hour, minute] = extracted.time.split(':').map(Number);
+          const start = new Date(year, month - 1, day, hour, minute);
+          if (isNaN(start.getTime())) {
+            await say('Sorry, the date or time I extracted seems invalid. Could you rephrase or specify the date and time more clearly?');
+            return;
+          }
+          const end = new Date(start.getTime() + 30 * 60000);
+          // Use the user's original message as context in the invite
+          const reminderSubject = `Reminder: ${userText.substring(0, 60)}${userText.length > 60 ? '...' : ''}`;
+          const reminderDescription = `You asked for this reminder in our chat:\n\n"${userText}"\n\nSee you on Slack! 🏀`;
+          await sendCalendarInviteEmail(
+            userSession.email,
+            reminderSubject,
+            reminderDescription,
+            start,
+            end,
+            'Slack (your workspace)'
+          );
+          userSession.awaitingSchedule = false;
+          await say(`Great! I’ve sent you a calendar invite for ${extracted.date} at ${extracted.time}. See you then!`);
+          return;
+        } else {
+          await say('Sorry, I need the date in YYYY-MM-DD format and time in 24-hour HH:mm format. Could you rephrase or specify the date and time more clearly?');
+          return;
+        }
+      } else {
+        await say(clarification);
+        return;
+      }
     }
 
     // Optionally add a short, real MJ scenario for a more human feel, only if it fits the context
