@@ -93,6 +93,25 @@ slackApp.client.on('connected', () => {
   console.log('✅ Successfully connected to Slack!');
 });
 
+// Log all incoming messages
+slackApp.message(async ({ message, say }) => {
+  console.log('📨 Received message:', {
+    text: message.text,
+    user: message.user,
+    channel: message.channel,
+    timestamp: message.ts
+  });
+});
+
+// Log all events
+slackApp.use(async ({ event, next }) => {
+  console.log('🎯 Received event:', {
+    type: event.type,
+    ...event
+  });
+  await next();
+});
+
 // Start the application
 const startApp = async () => {
   try {
