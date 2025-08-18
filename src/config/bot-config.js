@@ -70,14 +70,12 @@ export const botConfig = {
   name: process.env.BOT_NAME || 'Jordan',
   tone: 'direct, commanding, sharp',
   // Response size limits
-  maxResponseLength: 25,  // Maximum 25 characters
+  maxResponseLength: 50,  // Maximum 50 characters
   maxParagraphs: 1,      // Single line only
   maxLinesPerParagraph: 1, // One line only
   // OpenAI parameters for commander-style responses
-  temperature: 0.1,      // Almost deterministic
-  maxTokens: 15,         // Extremely limited tokens
-  // Force captain-style responses
-  responseSuffix: "Be brief. Be powerful. Like a captain.",
+  temperature: 0.7,      // Almost deterministic
+  maxTokens: 30,         // Extremely limited tokens
 
   // Scheduled reminder messages
   reminders: {
