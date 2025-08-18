@@ -1007,14 +1007,29 @@ app.error((error) => {
 
 // Start the app
 (async () => {
-  await app.start();
-  console.log('🚀 Motivational Slack Bot is running!');
-  console.log('⏰ Scheduled reminders are active');
-  console.log('🤖 Bot is ready to motivate and support!');
-  
-  // Start Express server for healthchecks
-  expressApp.listen(PORT, () => {
-    console.log(`🌐 Express server running on port ${PORT}`);
-    console.log(`🏥 Health check available at /health`);
-  });
+  try {
+    // Start Express server for healthchecks first
+    const server = expressApp.listen(PORT, () => {
+      console.log(`🌐 Express server running on port ${PORT}`);
+      console.log(`🏥 Health check available at /health`);
+    });
+
+    // Handle server errors
+    server.on('error', (error) => {
+      console.error('Express server error:', error);
+    });
+
+    // Only start the Slack bot if we have the required tokens
+    if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_SIGNING_SECRET && process.env.SLACK_APP_TOKEN) {
+      await app.start();
+      console.log('🚀 Motivational Slack Bot is running!');
+      console.log('⏰ Scheduled reminders are active');
+      console.log('🤖 Bot is ready to motivate and support!');
+    } else {
+      console.log('⚠️ Slack tokens not found. Running in health-check only mode.');
+    }
+  } catch (error) {
+    console.error('Failed to start the application:', error);
+    // Don't exit - keep the health check endpoint running
+  }
 })();
