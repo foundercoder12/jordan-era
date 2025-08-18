@@ -604,10 +604,13 @@ app.message(async ({ message, say }) => {
         const [hour, minute] = extracted.time.split(':').map(Number);
         const start = new Date(year, month - 1, day, hour, minute);
         const end = new Date(start.getTime() + 30 * 60000);
+        // Use the user's original message as context in the invite
+        const reminderSubject = `Reminder: ${userText.substring(0, 60)}${userText.length > 60 ? '...' : ''}`;
+        const reminderDescription = `You asked for this reminder in our chat:\n\n"${userText}"\n\nSee you on Slack! 🏀`;
         await sendCalendarInviteEmail(
           userSession.email,
-          'Jordan Chat Reminder',
-          'Time to chat with Jordan on Slack! Open Slack and say hi. 🏀',
+          reminderSubject,
+          reminderDescription,
           start,
           end,
           'Slack (your workspace)'
