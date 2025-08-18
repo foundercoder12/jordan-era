@@ -51,10 +51,10 @@ export function saveMemory(userSessions) {
   }
 }
 
-export function createUserSession(userId) {
+export function createUserSession() {
   return {
-    userId: userId,
     goals: [],
+    obstacles: [],
     preferences: {
       communicationStyle: 'encouraging',
       reminderFrequency: 'daily',
@@ -67,7 +67,8 @@ export function createUserSession(userId) {
     },
     conversationHistory: [],
     lastInteraction: new Date(),
-    createdAt: new Date()
+    createdAt: new Date(),
+    exchangeCount: 0
   };
 }
 

@@ -104,6 +104,9 @@ slackApp.use(async ({ event, next }) => {
 
 // Handle and log all incoming messages
 slackApp.message(async ({ message, say }) => {
+  // Skip bot messages
+  if (message.subtype === 'bot_message') return;
+
   console.log('📨 Received message:', {
     text: message.text,
     user: message.user,
@@ -124,20 +127,28 @@ slackApp.message(async ({ message, say }) => {
     // Get conversation history
     const memories = await retrieveMemories(message.user);
     
+    // Create enhanced conversation context with memory
+    const memoryContext = `User Context:
+    - Goals: ${userSession.goals?.map(g => g.text).join(', ') || 'None set yet'}
+    - Recent Obstacles: ${userSession.obstacles?.filter(o => !o.resolved).map(o => o.text).join(', ') || 'None'}
+    - Progress Streak: ${userSession.progress?.currentStreak || 0} days`;
+
     console.log('🧠 Generating response with OpenAI...');
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         { 
           role: "system", 
-          content: BOT_PERSONALITY
+          content: `${BOT_PERSONALITY}\n\n${memoryContext}`
         },
         ...memories.map(m => ({ role: "assistant", content: m.response })),
         { 
           role: "user", 
           content: message.text 
         }
-      ]
+      ],
+      temperature: 0.8,
+      max_tokens: 300
     });
 
     const response = completion.choices[0].message.content;
