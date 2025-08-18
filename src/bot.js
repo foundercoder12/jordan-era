@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-import { botConfig, MJ_CHALLENGES, MEME_CONFIG, BOT_PERSONALITY, MEME_KEYWORDS } from './config/bot-config.js';
+import { botSettings as botConfig, MJ_CHALLENGES, MEME_CONFIG, BOT_PERSONALITY, MEME_KEYWORDS } from '../config/bot-config.js';
 import { sendCalendarInviteEmail } from './utils/email.js';
 import { sessionStore } from './utils/sessionStore.js';
 

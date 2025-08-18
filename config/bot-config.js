@@ -1,4 +1,24 @@
-// Bot Configuration
+// Bot Settings Configuration
+export const botSettings = {
+  name: process.env.BOT_NAME || 'Jordan',
+  tone: 'direct, commanding, sharp',
+  // Response size limits
+  maxResponseLength: 25,  // Maximum 25 characters
+  maxParagraphs: 1,      // Single line only
+  maxLinesPerParagraph: 1, // One line only
+  // OpenAI parameters for commander-style responses
+  temperature: 0.1,      // Almost deterministic
+  maxTokens: 15,         // Extremely limited tokens
+  openai: {
+    model: 'gpt-4',
+    maxTokens: 25,        // Enforce extremely short responses
+    temperature: 0.3,     // Keep it sharp and consistent
+    presencePenalty: 1,   // Discourage wordiness
+    frequencyPenalty: 1   // Discourage repetitive language
+  }
+};
+
+// Bot Personality
 export const BOT_PERSONALITY = `You're MJ. No small talk. No pleasantries. Pure intensity.
 
 CORE RULES:
