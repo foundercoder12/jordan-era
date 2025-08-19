@@ -87,7 +87,7 @@ export const botConfig = {
   maxLinesPerParagraph: 1, // One line only
   // OpenAI parameters for commander-style responses
   temperature: 0.7,      // Almost deterministic
-  maxTokens: 30,         // Extremely limited tokens
+  maxTokens: 100,        // Increased token limit for more natural responses
 
   // Scheduled reminder messages
   reminders: {
